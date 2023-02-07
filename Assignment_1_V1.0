@@ -1,0 +1,42 @@
+#define LED 4
+#define Switch_1 13
+#define Switch_2 12
+
+int a = 100;
+int b =  1200;
+int c = 5;
+int d = 6000;
+int mode = 1;
+int i;
+int increment = 100;
+
+void setup() {
+  pinMode(LED, OUTPUT);
+  pinMode(Switch_1, INPUT_PULLUP);
+  pinMode(Switch_2, INPUT_PULLUP);
+}
+
+void loop() {
+  if(digitalRead(13)==HIGH && digitalRead(12)==LOW){
+      for(i=1; i<=c; i++){
+      digitalWrite(LED, HIGH);
+      delay(a);
+      digitalWrite(LED, LOW);
+      delay(b);
+      a = a + increment;
+      }
+    a = a - increment*c;
+  }
+
+  if(digitalRead(13)==HIGH && digitalRead(12)==HIGH){
+    a = a + increment*c;
+      for(i=1; i<=c; i++){
+      digitalWrite(LED, HIGH);
+      delay(a);
+      digitalWrite(LED, LOW);
+      delay(b);
+      a = a - increment;
+      }
+}
+
+}
