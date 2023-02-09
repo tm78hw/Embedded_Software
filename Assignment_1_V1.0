@@ -9,6 +9,8 @@ int d = 6000;
 int mode = 1;
 int i;
 int increment = 100;
+int Switch_1_On = 0;
+int Switch_2_On = 0;
 
 void setup() {
   pinMode(LED, OUTPUT);
@@ -17,18 +19,67 @@ void setup() {
 }
 
 void loop() {
+  if(digitalRead(13)==HIGH){
+      Switch_1_On = 1;
+  }
+
+
+  if(digitalRead(12)==HIGH){
+      Switch_2_On = 1;
+  }
+
+
+  while(Switch_1_On == 1 && Switch_2_On == 0){
+      switch_1();
+        if(witch_1_On == 0){
+          break;
+        }
+  }
+
+  while(Switch_1_On == 1 && Switch_2_On == 1){
+      switch_2();
+        if(digitalRead(12)==HIGH){
+          Switch_2_On = 0;
+          break;
+      }
+  }
+
+/*
+  if(digitalRead(13)==LOW && digitalRead(12)==HIGH){
+      OFF();
+  }
+  
   if(digitalRead(13)==HIGH && digitalRead(12)==LOW){
+      switch_1();
+  }
+
+  if(digitalRead(13)==HIGH && digitalRead(12)==HIGH){
+     switch_2();
+  }
+*/
+}
+
+void OFF(){
+  digitalWrite(LED,LOW);
+}
+
+void switch_1(){
       for(i=1; i<=c; i++){
       digitalWrite(LED, HIGH);
       delay(a);
       digitalWrite(LED, LOW);
       delay(b);
       a = a + increment;
+         if(digitalRead(13)==HIGH){
+            Switch_1_On = 0;
+            break;
+            delay(a);
+      }
       }
     a = a - increment*c;
-  }
+}
 
-  if(digitalRead(13)==HIGH && digitalRead(12)==HIGH){
+void switch_2(){
     a = a + increment*c;
       for(i=1; i<=c; i++){
       digitalWrite(LED, HIGH);
@@ -37,6 +88,4 @@ void loop() {
       delay(b);
       a = a - increment;
       }
-}
-
 }
