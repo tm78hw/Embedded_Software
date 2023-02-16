@@ -3,6 +3,7 @@
 #define Button_1 4
 #define Button_2 5
 
+//Define dleay constants that make up signals A B and A modified
 int a = 100;
 int b =  1200;
 int c = 5;
@@ -10,122 +11,64 @@ int d = 6000;
 int mode = 1;
 int i;
 int increment = 100;
-int Sig_A_On = 0;
-int Sig_B_On = 0;
-int endloop = 0;
 
+//Setup two LED's as outputs and two buttons as inputs
 void setup() {
   pinMode(LED_A, OUTPUT);
   pinMode(LED_B, OUTPUT);
   pinMode(Button_1, INPUT_PULLUP);
   pinMode(Button_2, INPUT_PULLUP);
-  Serial.begin(9600);
 }
 
+//Main loop to assign each button state to a specific waveform
 void loop() {
-End_Sig_A == 0;
-End_Sig_A == 0;
-  if(digitalRead(Button_1)==HIGH){
-      while(1){
-        delay(b);
-        Sig_B();
-        Sig_A();
-
-        if ( End_Sig_A == 1){
-          break;
-        }
-
-      }
-
-  }
-
-
-  if(digitalRead(Button_2)==HIGH){
+  while(digitalRead(Button_1)==LOW){ //Button 1 = 0 run signal B folowed by signal A
+      delay(b);
+      Sig_B();
+      Sig_A();
+      
+      while(digitalRead(Button_2)==HIGH){ //Button 2 = 1 run signal B followed by signal A modified
       Sig_B();
       Sig_A_Mod();
-  }
-  
-Serial.print ("Sig_A_On = ");
-Serial.print (Sig_A_On);
-//Serial.print ('/n');
-Serial.print ("Sig_B_On = ");
-Serial.print (Sig_B_On);
-//Serial.print ('/n');
-/*
-  while(Sig_A_On == 1 && Sig_B_On == 0){
-      Sig_A();
-        if(Sig_A_On == 0){
-          break;
-        }
-  }
-
-  while(Sig_A_On == 1 && Sig_B_On == 1){
-      Sig_B();
-        if(digitalRead(Button_1)==HIGH){
-          Sig_B_On = 0;
-          break;
       }
   }
 
-/*
-  if(digitalRead(13)==LOW && digitalRead(12)==HIGH){
-      OFF();
+  while(digitalRead(Button_1)==HIGH){ // Button 1 = 1 turn off signal waveform
+      OFF(); 
   }
-  
-  if(digitalRead(13)==HIGH && digitalRead(12)==LOW){
-      switch_1();
-  }
-
-  if(digitalRead(13)==HIGH && digitalRead(12)==HIGH){
-     switch_2();
-  }
-*/
+  //Button 2 is default 0 so it is not neccessary to define a state for this
 }
 
-void OFF(){
+//Define Main Functions used in Loop
+void OFF(){ //Ensures both LED's are turned off
   digitalWrite(LED_A,LOW);
+  digitalWrite(LED_B,LOW);
 }
 
-void Sig_B(){
+
+void Sig_B(){ //Runs signal B
       digitalWrite(LED_B, HIGH);
       delay(a);
       digitalWrite(LED_B, LOW);
 }
 
-void Sig_A(){
-    
-      for(i=1; i<=c; i++){
-        digitalWrite(LED_A, HIGH);
-          if(digitalRead(Button_1)==HIGH){
-            End_Sig_A = 1;
-          }
+void Sig_A(){ //Runs signal A
+      for(i=1; i<=c; i++){ //for loop will run the sequence c number of times
+        digitalWrite(LED_A, HIGH);//LED is held high for suration a
         delay(a);
-        digitalWrite(LED_A, LOW);
-          if(digitalRead(Button_1)==HIGH){
-            End_Sig_A = 1;
-          }        
+        digitalWrite(LED_A, LOW); //LED is held low for duration b
         delay(b);
-        a = a + increment;
-
-         if(digitalRead(Button_1)==HIGH){
-            End_Sig_A = 1;
-        }
+        a = a + increment;  //The time LED A is on will increase by the increment each cycle
       }
-    a = a - increment*c;
+    a = a - increment*c; //Returns a to its original value
 }
 
-void Sig_A_Mod(){
-    a = a + increment*c;
-      for(i=1; i<=c; i++){
-      digitalWrite(LED_A, HIGH);
-          if(digitalRead(Button_2)==HIGH){
-            End_Sig_A_Mod = 1;
-          }      
+void Sig_A_Mod(){ //Runs signal A modified
+    a = a + increment*c; //
+      for(i=1; i<=c; i++){  //for loop will run the sequence c number of times
+      digitalWrite(LED_A, HIGH);   
       delay(a);
       digitalWrite(LED_A, LOW);
-          if(digitalRead(Button_2)==HIGH){
-            End_Sig_A_Mod = 1;
-          }
       delay(b);
       a = a - increment;
       }
