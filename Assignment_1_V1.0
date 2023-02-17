@@ -1,16 +1,18 @@
+//Define Pins Names
 #define LED_A 0
 #define LED_B 1
 #define Button_1 4
 #define Button_2 5
 
 //Define dleay constants that make up signals A B and A modified
-int a = 100;
-int b =  1200;
-int c = 5;
-int d = 6000;
-int mode = 1;
+int a = 1300;   //length of pulse
+int b =  1200;  //length between pulses
+int c = 16;     //Number of pulses
+int d = 6000;   //Space between waveforms
+int e = 50;     //Length of sig B
+int increment = 50; //Increment for signal A
 int i;
-int increment = 100;
+
 
 //Setup two LED's as outputs and two buttons as inputs
 void setup() {
@@ -22,14 +24,16 @@ void setup() {
 
 //Main loop to assign each button state to a specific waveform
 void loop() {
-  while(digitalRead(Button_1)==LOW){ //Button 1 = 0 run signal B folowed by signal A
-      delay(b);
-      Sig_B();
+  while(digitalRead(Button_1)==LOW){        //Button 1 = 0 run signal B folowed by 
+      Sig_B();                              //signal A and a delay "d"
       Sig_A();
+      delayMicroseconds(d);
       
-      while(digitalRead(Button_2)==HIGH){ //Button 2 = 1 run signal B followed by signal A modified
-      Sig_B();
+      while(digitalRead(Button_2)==HIGH){   //Button 2 = 1 run signal B followed by 
+      Sig_B();                              //signal A modified and a delay "d"
       Sig_A_Mod();
+      delayMicroseconds(d);
+      
       }
   }
 
@@ -39,37 +43,41 @@ void loop() {
   //Button 2 is default 0 so it is not neccessary to define a state for this
 }
 
-//Define Main Functions used in Loop
-void OFF(){ //Ensures both LED's are turned off
+//Define main functions used in Loop
+
+//Ensures both LED's are turned off
+void OFF(){
   digitalWrite(LED_A,LOW);
   digitalWrite(LED_B,LOW);
 }
 
-
-void Sig_B(){ //Runs signal B
+//Runs signal B
+void Sig_B(){
       digitalWrite(LED_B, HIGH);
-      delay(a);
+      delayMicroseconds(e);
       digitalWrite(LED_B, LOW);
 }
 
-void Sig_A(){ //Runs signal A
-      for(i=1; i<=c; i++){ //for loop will run the sequence c number of times
-        digitalWrite(LED_A, HIGH);//LED is held high for suration a
-        delay(a);
-        digitalWrite(LED_A, LOW); //LED is held low for duration b
-        delay(b);
-        a = a + increment;  //The time LED A is on will increase by the increment each cycle
+//Runs signal A
+void Sig_A(){
+      for(i=1; i<=c; i++){           //for loop will run the sequence c number of times
+        digitalWrite(LED_A, HIGH);   //LED is held high for duration a
+        delayMicroseconds(a);
+        digitalWrite(LED_A, LOW);    //LED is held low for duration b
+        delayMicroseconds(b);
+        a = a + increment;           //The time LED A is on will increase by the increment each cycle
       }
-    a = a - increment*c; //Returns a to its original value
+    a = a - increment*c;             //Returns a to its original value
 }
 
-void Sig_A_Mod(){ //Runs signal A modified
-    a = a + increment*c; //
-      for(i=1; i<=c; i++){  //for loop will run the sequence c number of times
-      digitalWrite(LED_A, HIGH);   
-      delay(a);
-      digitalWrite(LED_A, LOW);
-      delay(b);
-      a = a - increment;
+//Runs signal A modified according to mode 2 (inverted signal A)
+void Sig_A_Mod(){
+    a = a + increment*c;            //Sets maximum pulse width first
+      for(i=1; i<=c; i++){          //for loop will run the sequence c number of times
+      digitalWrite(LED_A, HIGH);    //LED is held high for duration a
+      delayMicroseconds(a);
+      digitalWrite(LED_A, LOW);     //LED is held low for duration b
+      delayMicroseconds(b);
+      a = a - increment;            //The time LED A is on will decrease by the increment each cycle
       }
 }
