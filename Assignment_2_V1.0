@@ -1,9 +1,12 @@
+#include <B31DGMonitor.h>
+
+
 //Define Pin Names
-#define TASK_1_DP 0
-#define TASK_2_DP 1
+#define TASK_1_DP 6
+#define TASK_2_DP 7
 #define TASK_3_DP 2
-#define TASK_4_DP 3
-#define TASK_4_LED 4
+#define TASK_4_DP 1
+#define TASK_4_LED 0
 
 //Define delay constants For Task 1
 int T1H = 200;    //Time 1 High in us
@@ -31,8 +34,9 @@ float Task_4_R3 = 0;
 float Task_4_R4 = 0;
 float Task_4_Avg = 0;
 
+int i = 0;
+
 void B31DGCyclicExecutiveMonitor();
-//B31DGCyclicExecutiveMonitor monitor;
 
 
 void setup(void) {
@@ -40,12 +44,13 @@ void setup(void) {
   pinMode(TASK_2_DP, INPUT);
   pinMode(TASK_3_DP, INPUT);
   pinMode(TASK_4_DP, INPUT);
+  pinMode(TASK_4_LED, OUTPUT);
   Serial.begin(9600);
-  B31DGCyclicExecutiveMonitor.startMonitoring();
+  //monitor.startMonitoring();
 }
 
 void Task1() {
-  monitor.jobStarted(1);
+  //B31DGCyclicExecutiveMonitor.jobStarted(1);
   digitalWrite(TASK_1_DP, HIGH);   //TASK_1_DP is held high for duration T1H
   delayMicroseconds(T1H);
   digitalWrite(TASK_1_DP, LOW);    //Then Low for duration T1L
@@ -53,32 +58,33 @@ void Task1() {
   digitalWrite(TASK_1_DP, HIGH);   //Then high for duration T2H
   delayMicroseconds(T2H);
   digitalWrite(TASK_1_DP, LOW);
-  monitor.jobEnded(1);
+  //B31DGCyclicExecutiveMonitor.jobEnded(1);
 }
 
 void Task2() {
-  monitor.jobStarted(2);
+  //monitor.jobStarted(2);
   Task_2_TH = pulseIn(TASK_2_DP, HIGH);
   Task_2_TL = pulseIn(TASK_2_DP, LOW);
   Task_2_Freq = 1/(Task_2_TH+Task_2_TL);
-  monitor.jobEnded(2);
+  //monitor.jobEnded(2);
 }
 
 void Task3() {
-  monitor.jobStarted(3);
+  //monitor.jobStarted(3);
   Task_3_TH = pulseIn(TASK_3_DP, HIGH);
   Task_3_TL = pulseIn(TASK_3_DP, LOW);
   Task_3_Freq = 1/(Task_3_TH+Task_3_TL);
-  monitor.jobEnded(3);
+  //monitor.jobEnded(3);
 }
 
 void Task4() {
-  monitor.jobStarted(4);
-  Task_4_R1 = digitalRead(TASK_4_DP);
-  Task_4_R2 = digitalRead(TASK_4_DP);
-  Task_4_R3 = digitalRead(TASK_4_DP);
-  Task_4_R4 = digitalRead(TASK_4_DP);
-  Task_4_Avg = (Task_4_R1 + Task_4_R1 + Task_4_R1 + Task_4_R1)/4;
+  //monitor.jobStarted(4);
+  Task_4_R1 = analogRead(TASK_4_DP);
+  Task_4_R2 = analogRead(TASK_4_DP);
+  Task_4_R3 = analogRead(TASK_4_DP);
+  Task_4_R4 = analogRead(TASK_4_DP);
+  Task_4_Avg = (Task_4_R1 + Task_4_R1 + Task_4_R1 + Task_4_R1)/(4*4095/3.3);
+  Serial.printf("Task_4_Avg = %f, \n", Task_4_Avg );
   
   if (Task_4_Avg >= 1.65){
     digitalWrite(TASK_4_LED, HIGH);
@@ -87,24 +93,46 @@ void Task4() {
     digitalWrite(TASK_4_LED, LOW);
   }
     
-  monitor.jobEnded(4);
+  //monitor.jobEnded(4);
 }
 
 void Task5() {
-  monitor.jobStarted(5);
+  //monitor.jobStarted(5);
   Task_2_Freq_Int = ((Task_2_Freq-333)/700)*99.99;
   Task_3_Freq_Int = ((Task_2_Freq-500)/700)*99.99;
-  Serial.print("Task 2 Frequnecy = %f, ", Task_2_Freq_Int );
-  Serial.print("Task 3 Frequency = %f, ", Task_3_Freq_Int );
-  monitor.jobEnded(5);
+  Serial.printf("Task 2 Frequnecy = %f, ", Task_2_Freq_Int );
+  Serial.printf("Task 3 Frequency = %f, \n", Task_3_Freq_Int );
+  //monitor.jobEnded(5);
 }
 
 void loop(void)
 {
 // implement your cyclic executive here
-Task1();
-Task2();
-Task3();
-Task4();
-Task5();
+  for(i=1; i<=50; i++){          //for loop will run the sequence c number of times
+  
+  Task1();
+  delayMicroseconds(744);
+
+    if(i == 1||6||11||16||21||26||31||36||41|46){
+      Task2();
+    }
+  delayMicroseconds(744); 
+ 
+    if(i % 2 == 1){
+      Task3();
+    }
+  delayMicroseconds(744);
+
+    if(i == 1||6||11||16||21||26||31||36||41|46){
+      Task4();
+    }
+  delayMicroseconds(744);
+
+    if(i == 25||50){
+      Task5();
+    }
+  delayMicroseconds(744);
+        
+  }
+
 }
