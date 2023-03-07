@@ -1,5 +1,5 @@
 #include <B31DGMonitor.h>
-
+#include <Ticker.h>
 
 //Define Pin Names
 #define TASK_1_DP 5
@@ -35,9 +35,11 @@ float Task_4_R4 = 0;
 float Task_4_Avg = 0;
 
 int i = 0;
+unsigned long frameCounter = 0;
 int delayTasks = 50;
 
 B31DGCyclicExecutiveMonitor monitor;
+Ticker FrameTick;
 
 void setup(void) {
   pinMode(TASK_1_DP, OUTPUT);
@@ -46,11 +48,15 @@ void setup(void) {
   pinMode(TASK_4_DP, INPUT);
   pinMode(TASK_4_LED, OUTPUT);
   Serial.begin(9600);
+  FrameTick.attach_ms(4, Frame);
+  Task1();
+  delayMicroseconds(2000);
   monitor.startMonitoring();
 }
 
-void Task1() {
+void Task1() {    //takes 286us
   monitor.jobStarted(1);
+  delayMicroseconds(30);
   digitalWrite(TASK_1_DP, HIGH);   //TASK_1_DP is held high for duration T1H
   delayMicroseconds(T1H);
   digitalWrite(TASK_1_DP, LOW);    //Then Low for duration T1L
@@ -61,7 +67,7 @@ void Task1() {
   monitor.jobEnded(1);
 }
 
-void Task2() {
+void Task2() {    // takes
   monitor.jobStarted(2);
   Task_2_TH = pulseIn(TASK_2_DP, HIGH);
   //Task_2_TL = pulseIn(TASK_2_DP, LOW);
@@ -81,7 +87,7 @@ void Task3() {
   monitor.jobEnded(3);
 }
 
-void Task4() {
+void Task4() {    //Takes 228us
   monitor.jobStarted(4);
   Task_4_R1 = analogRead(TASK_4_DP);
   Task_4_R2 = analogRead(TASK_4_DP);
@@ -100,83 +106,38 @@ void Task4() {
   monitor.jobEnded(4);
 }
 
-void Task5() {
-  monitor.jobStarted(5);
-  Task_2_Freq_Int = ((Task_2_Freq-333)/667)*99.99;
-  Task_3_Freq_Int = ((Task_3_Freq-500)/500)*99.99;
-  Serial.printf("Task 2 Frequnecy = %.2f, ", Task_2_Freq_Int );
-  Serial.printf("Task 3 Frequency = %.2f, \n", Task_3_Freq_Int );
-  monitor.jobEnded(5);
+void Task5() { //Takes 122us
+  if(frameCounter % 25 == 0){ 
+    monitor.jobStarted(5);
+    Task_2_Freq_Int = ((Task_2_Freq-333)/667)*99.99;
+    Task_3_Freq_Int = ((Task_3_Freq-500)/500)*99.99;
+    Task_2_Freq_Int = constrain(Task_2_Freq_Int,0,99.99);
+    Task_3_Freq_Int = constrain(Task_3_Freq_Int,0,99.99);
+    Serial.printf("Task 2 Frequnecy = %.2f, ", Task_2_Freq_Int );
+    Serial.printf("Task 3 Frequency = %.2f, \n", Task_3_Freq_Int );
+    monitor.jobEnded(5);
+  }   
 }
 
-/*
+void Frame(){   
+   unsigned int slot = frameCounter % 10;
+   switch (slot) {
+     case 0: Task1();                Task3();     Task4();   Task5();  break;
+     case 1: Task1();    Task2();                                      break;
+     case 2: Task1();                Task3();                          break;
+     case 3: Task1();                                                  break;
+     case 4: Task1();                Task3();                          break;
+     case 5: Task1();                             Task4();   Task5();  break;
+     case 6: Task1();                Task3();                          break;
+     case 7: Task1();    Task2();                                      break;
+     case 8: Task1();                Task3();                          break;
+     case 9: Task1();                                                  break;
+  }
+  
+  frameCounter = frameCounter + 1  ;
+}
+
+
 void loop(void) // Single time slot function of the Cyclic Executive (repeating)
 {
-  // uncomment this to find execution time of given tasks 
-  
-  unsigned long bT = micros();
-  //for (int i=0; i<1; i++) {
-    Task5();
-  //}
-  unsigned long timeItTook = (micros()-bT);
-  Serial.print("Duration SerialOutput Job = ");
-  Serial.print(timeItTook);
-  Serial.print("\n");
-  delay(500);
-}
-*/
-
-void loop(void)
-{
-// implement your cyclic executive here
-  for(i=1; i<=50; i++){          //for loop will run the sequence 50 times
-  unsigned long bT = micros();
-  
-  Task1();
-  delayMicroseconds(delayTasks);
-
-    if(i % 5== 1){  //triggers when i = 1||6||11|| ... ||36||41|46
-      Task2();
-    }
-    else{
-       delayMicroseconds(999); 
-    }
-    
-  delayMicroseconds(delayTasks); 
- 
-    if(i % 2 == 1){ //triggers when i = 1||3||5|| ... ||45||47|49
-      Task3();
-    }
-    else{
-       delayMicroseconds(999); 
-    }
-    
-  delayMicroseconds(delayTasks);
-
-
-    if(i % 5 == 1){ //triggers when i = 1||6||11|| ... ||36||41|46
-      Task4();
-    }
-    else{
-       delayMicroseconds(228); 
-    }
-    
-  delayMicroseconds(delayTasks);
-
-    if(i % 25 == 1){
-      Task5();
-    }
-    else{
-       delayMicroseconds(122); 
-    }
-    
-  delayMicroseconds(delayTasks);
-  
-  unsigned long frameTime = (micros()-bT);
-  
-  delayMicroseconds(3993-frameTime); 
-
-        
-  }
-
 }
