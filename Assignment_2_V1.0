@@ -2,9 +2,9 @@
 
 
 //Define Pin Names
-#define TASK_1_DP 6
-#define TASK_2_DP 7
-#define TASK_3_DP 2
+#define TASK_1_DP 5
+#define TASK_2_DP 6
+#define TASK_3_DP 7
 #define TASK_4_DP 1
 #define TASK_4_LED 0
 
@@ -19,12 +19,12 @@ int Task_3_Period = 8;    //Period of Task 3 in ms
 int Task_4_Period = 20;   //Increment for signal A
 int Task_5_Period = 100;  //Period of Task 5 in ms
 
-int Task_2_TH = 0;
-int Task_2_TL = 0;
-int Task_3_TH = 0;
-int Task_3_TL = 0;
-int Task_2_Freq = 0;
-int Task_3_Freq = 0;
+float Task_2_TH = 0;
+float Task_2_TL = 0;
+float Task_3_TH = 0;
+float Task_3_TL = 0;
+float Task_2_Freq = 0;
+float Task_3_Freq = 0;
 float Task_2_Freq_Int = 0;
 float Task_3_Freq_Int = 0;
 
@@ -35,9 +35,9 @@ float Task_4_R4 = 0;
 float Task_4_Avg = 0;
 
 int i = 0;
+int delayTasks = 50;
 
-void B31DGCyclicExecutiveMonitor();
-
+B31DGCyclicExecutiveMonitor monitor;
 
 void setup(void) {
   pinMode(TASK_1_DP, OUTPUT);
@@ -46,11 +46,11 @@ void setup(void) {
   pinMode(TASK_4_DP, INPUT);
   pinMode(TASK_4_LED, OUTPUT);
   Serial.begin(9600);
-  //monitor.startMonitoring();
+  monitor.startMonitoring();
 }
 
 void Task1() {
-  //B31DGCyclicExecutiveMonitor.jobStarted(1);
+  monitor.jobStarted(1);
   digitalWrite(TASK_1_DP, HIGH);   //TASK_1_DP is held high for duration T1H
   delayMicroseconds(T1H);
   digitalWrite(TASK_1_DP, LOW);    //Then Low for duration T1L
@@ -58,33 +58,37 @@ void Task1() {
   digitalWrite(TASK_1_DP, HIGH);   //Then high for duration T2H
   delayMicroseconds(T2H);
   digitalWrite(TASK_1_DP, LOW);
-  //B31DGCyclicExecutiveMonitor.jobEnded(1);
+  monitor.jobEnded(1);
 }
 
 void Task2() {
-  //monitor.jobStarted(2);
+  monitor.jobStarted(2);
   Task_2_TH = pulseIn(TASK_2_DP, HIGH);
-  Task_2_TL = pulseIn(TASK_2_DP, LOW);
-  Task_2_Freq = 1/(Task_2_TH+Task_2_TL);
-  //monitor.jobEnded(2);
+  //Task_2_TL = pulseIn(TASK_2_DP, LOW);
+  Task_2_Freq = 1000000/(Task_2_TH*2);
+  //Serial.printf("Task_2_TH = %f, \n", Task_2_TH );
+  //Serial.printf("Task_2_TL = %f, \n", Task_2_TL );
+  //Serial.printf("Task_2_Freq = %f, \n", Task_2_Freq );
+  monitor.jobEnded(2);
 }
 
 void Task3() {
-  //monitor.jobStarted(3);
+  monitor.jobStarted(3);
   Task_3_TH = pulseIn(TASK_3_DP, HIGH);
-  Task_3_TL = pulseIn(TASK_3_DP, LOW);
-  Task_3_Freq = 1/(Task_3_TH+Task_3_TL);
-  //monitor.jobEnded(3);
+  //Task_3_TL = pulseIn(TASK_3_DP, LOW);
+  Task_3_Freq = 1000000/(Task_3_TH*2);
+  //Serial.printf("Task_3_Freq = %f, \n", Task_3_Freq );
+  monitor.jobEnded(3);
 }
 
 void Task4() {
-  //monitor.jobStarted(4);
+  monitor.jobStarted(4);
   Task_4_R1 = analogRead(TASK_4_DP);
   Task_4_R2 = analogRead(TASK_4_DP);
   Task_4_R3 = analogRead(TASK_4_DP);
   Task_4_R4 = analogRead(TASK_4_DP);
   Task_4_Avg = (Task_4_R1 + Task_4_R1 + Task_4_R1 + Task_4_R1)/(4*4095/3.3);
-  Serial.printf("Task_4_Avg = %f, \n", Task_4_Avg );
+  //Serial.printf("Task_4_Avg = %f, \n", Task_4_Avg );
   
   if (Task_4_Avg >= 1.65){
     digitalWrite(TASK_4_LED, HIGH);
@@ -93,45 +97,85 @@ void Task4() {
     digitalWrite(TASK_4_LED, LOW);
   }
     
-  //monitor.jobEnded(4);
+  monitor.jobEnded(4);
 }
 
 void Task5() {
-  //monitor.jobStarted(5);
-  Task_2_Freq_Int = ((Task_2_Freq-333)/700)*99.99;
-  Task_3_Freq_Int = ((Task_2_Freq-500)/700)*99.99;
-  Serial.printf("Task 2 Frequnecy = %f, ", Task_2_Freq_Int );
-  Serial.printf("Task 3 Frequency = %f, \n", Task_3_Freq_Int );
-  //monitor.jobEnded(5);
+  monitor.jobStarted(5);
+  Task_2_Freq_Int = ((Task_2_Freq-333)/667)*99.99;
+  Task_3_Freq_Int = ((Task_3_Freq-500)/500)*99.99;
+  Serial.printf("Task 2 Frequnecy = %.2f, ", Task_2_Freq_Int );
+  Serial.printf("Task 3 Frequency = %.2f, \n", Task_3_Freq_Int );
+  monitor.jobEnded(5);
 }
+
+/*
+void loop(void) // Single time slot function of the Cyclic Executive (repeating)
+{
+  // uncomment this to find execution time of given tasks 
+  
+  unsigned long bT = micros();
+  //for (int i=0; i<1; i++) {
+    Task5();
+  //}
+  unsigned long timeItTook = (micros()-bT);
+  Serial.print("Duration SerialOutput Job = ");
+  Serial.print(timeItTook);
+  Serial.print("\n");
+  delay(500);
+}
+*/
 
 void loop(void)
 {
 // implement your cyclic executive here
-  for(i=1; i<=50; i++){          //for loop will run the sequence c number of times
+  for(i=1; i<=50; i++){          //for loop will run the sequence 50 times
+  unsigned long bT = micros();
   
   Task1();
-  delayMicroseconds(744);
+  delayMicroseconds(delayTasks);
 
-    if(i == 1||6||11||16||21||26||31||36||41|46){
+    if(i % 5== 1){  //triggers when i = 1||6||11|| ... ||36||41|46
       Task2();
     }
-  delayMicroseconds(744); 
+    else{
+       delayMicroseconds(999); 
+    }
+    
+  delayMicroseconds(delayTasks); 
  
-    if(i % 2 == 1){
+    if(i % 2 == 1){ //triggers when i = 1||3||5|| ... ||45||47|49
       Task3();
     }
-  delayMicroseconds(744);
+    else{
+       delayMicroseconds(999); 
+    }
+    
+  delayMicroseconds(delayTasks);
 
-    if(i == 1||6||11||16||21||26||31||36||41|46){
+
+    if(i % 5 == 1){ //triggers when i = 1||6||11|| ... ||36||41|46
       Task4();
     }
-  delayMicroseconds(744);
+    else{
+       delayMicroseconds(228); 
+    }
+    
+  delayMicroseconds(delayTasks);
 
-    if(i == 25||50){
+    if(i % 25 == 1){
       Task5();
     }
-  delayMicroseconds(744);
+    else{
+       delayMicroseconds(122); 
+    }
+    
+  delayMicroseconds(delayTasks);
+  
+  unsigned long frameTime = (micros()-bT);
+  
+  delayMicroseconds(3993-frameTime); 
+
         
   }
 
