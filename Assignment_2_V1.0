@@ -8,17 +8,12 @@
 #define TASK_4_DP 1
 #define TASK_4_LED 0
 
-//Define delay constants For Task 1
+//Define delay constants for task 1
 int T1H = 200;    //Time 1 High in us
 int T1L = 50;     //Time 1 Low in us
 int T2H = 30;     //Time 2 High in us
 
-int Task_1_Period = 4;    //Period of Task 1 in ms
-int Task_2_Period = 20;   //Period of Task 2 in ms
-int Task_3_Period = 8;    //Period of Task 3 in ms
-int Task_4_Period = 20;   //Increment for signal A
-int Task_5_Period = 100;  //Period of Task 5 in ms
-
+//Initialize variables for tasks 2 and 3 and 4
 float Task_2_TH = 0;
 float Task_2_TL = 0;
 float Task_3_TH = 0;
@@ -27,34 +22,34 @@ float Task_2_Freq = 0;
 float Task_3_Freq = 0;
 float Task_2_Freq_Int = 0;
 float Task_3_Freq_Int = 0;
-
 float Task_4_R1 = 0;
 float Task_4_R2 = 0;
 float Task_4_R3 = 0;
 float Task_4_R4 = 0;
 float Task_4_Avg = 0;
 
-int i = 0;
+//Initiazlize frame counter
 unsigned long frameCounter = 0;
-int delayTasks = 50;
 
+//Name mointor and ticker
 B31DGCyclicExecutiveMonitor monitor;
 Ticker FrameTick;
 
 void setup(void) {
-  pinMode(TASK_1_DP, OUTPUT);
+  pinMode(TASK_1_DP, OUTPUT);     //Pin modes
   pinMode(TASK_2_DP, INPUT);
   pinMode(TASK_3_DP, INPUT);
   pinMode(TASK_4_DP, INPUT);
   pinMode(TASK_4_LED, OUTPUT);
-  Serial.begin(9600);
-  FrameTick.attach_ms(4, Frame);
-  Task1();
-  delayMicroseconds(2000);
-  monitor.startMonitoring();
+  Serial.begin(9600);             //Begin serial monitor
+  FrameTick.attach_ms(4, Frame);  //Define ticker size as 4ms for the "Frame" function
+  Task1();                        //Run task 1 followed by fixed delay in
+  delayMicroseconds(2000);        //order to fix associated with startMonitoring
+  monitor.startMonitoring();      //Start monitoring scheme
 }
 
-void Task1() {    //takes 286us
+//Define Tasks 1 - 5
+void Task1() {                     //takes 286us
   monitor.jobStarted(1);
   delayMicroseconds(30);
   digitalWrite(TASK_1_DP, HIGH);   //TASK_1_DP is held high for duration T1H
@@ -67,61 +62,61 @@ void Task1() {    //takes 286us
   monitor.jobEnded(1);
 }
 
-void Task2() {    // takes
+void Task2() {                    //takes 1000-2000us
   monitor.jobStarted(2);
-  Task_2_TH = pulseIn(TASK_2_DP, HIGH);
-  //Task_2_TL = pulseIn(TASK_2_DP, LOW);
-  Task_2_Freq = 1000000/(Task_2_TH*2);
-  //Serial.printf("Task_2_TH = %f, \n", Task_2_TH );
-  //Serial.printf("Task_2_TL = %f, \n", Task_2_TL );
-  //Serial.printf("Task_2_Freq = %f, \n", Task_2_Freq );
+  Task_2_TH = pulseIn(TASK_2_DP, HIGH);   //Measure time of high pulse
+  Task_2_Freq = 1000000/(Task_2_TH*2);    //Compute frequnecy
   monitor.jobEnded(2);
 }
 
-void Task3() {
+void Task3() {                    //takes 1000-3000us
   monitor.jobStarted(3);
-  Task_3_TH = pulseIn(TASK_3_DP, HIGH);
-  //Task_3_TL = pulseIn(TASK_3_DP, LOW);
-  Task_3_Freq = 1000000/(Task_3_TH*2);
-  //Serial.printf("Task_3_Freq = %f, \n", Task_3_Freq );
+  Task_3_TH = pulseIn(TASK_3_DP, HIGH);   //Measure time of high pulse
+  Task_3_Freq = 1000000/(Task_3_TH*2);    //Compute frequnecy
   monitor.jobEnded(3);
 }
 
-void Task4() {    //Takes 228us
+void Task4() {                     //Takes 228us
   monitor.jobStarted(4);
-  Task_4_R1 = analogRead(TASK_4_DP);
-  Task_4_R2 = analogRead(TASK_4_DP);
+  Task_4_R1 = analogRead(TASK_4_DP);  //Measure four seperate analogue readings
+  Task_4_R2 = analogRead(TASK_4_DP);  //Store each one in a seperate float
   Task_4_R3 = analogRead(TASK_4_DP);
   Task_4_R4 = analogRead(TASK_4_DP);
-  Task_4_Avg = (Task_4_R1 + Task_4_R1 + Task_4_R1 + Task_4_R1)/(4*4095/3.3);
-  //Serial.printf("Task_4_Avg = %f, \n", Task_4_Avg );
   
-  if (Task_4_Avg >= 1.65){
+  //Then caclulate average of the 4 values and convert to voltage value
+  Task_4_Avg = (Task_4_R1 + Task_4_R1 + Task_4_R1 + Task_4_R1)/(4*4095/3.3);
+
+  if (Task_4_Avg >= 1.65){      //light LED when the voltage is above 1.65V
     digitalWrite(TASK_4_LED, HIGH);
   }
-  else{
+  else{                         //Turn off LED when voltage is below 1.65V
     digitalWrite(TASK_4_LED, LOW);
   }
     
   monitor.jobEnded(4);
 }
 
-void Task5() { //Takes 122us
-  if(frameCounter % 25 == 0){ 
+void Task5() {                    //Takes 122us
+  if(frameCounter % 25 == 0){           //Run task only at intervals of 100us
     monitor.jobStarted(5);
-    Task_2_Freq_Int = ((Task_2_Freq-333)/667)*99.99;
-    Task_3_Freq_Int = ((Task_3_Freq-500)/500)*99.99;
-    Task_2_Freq_Int = constrain(Task_2_Freq_Int,0,99.99);
-    Task_3_Freq_Int = constrain(Task_3_Freq_Int,0,99.99);
-    Serial.printf("Task 2 Frequnecy = %.2f, ", Task_2_Freq_Int );
-    Serial.printf("Task 3 Frequency = %.2f, \n", Task_3_Freq_Int );
+    Task_2_Freq_Int = ((Task_2_Freq-333)/667)*99.99;    //Turn frequnecy into integer 
+    Task_3_Freq_Int = ((Task_3_Freq-500)/500)*99.99;    //between 0 and 99.99
+    Task_2_Freq_Int = constrain(Task_2_Freq_Int,0,99.99);   //Limit integers to only
+    Task_3_Freq_Int = constrain(Task_3_Freq_Int,0,99.99);   //between 0 and 99.99
+    Serial.printf("Task 2 Frequnecy = %.2f, ", Task_2_Freq_Int );   //Serial print
+    Serial.printf("Task 3 Frequency = %.2f, \n", Task_3_Freq_Int ); //integers
     monitor.jobEnded(5);
   }   
 }
 
+//Define Frame function
 void Frame(){   
-   unsigned int slot = frameCounter % 10;
-   switch (slot) {
+   unsigned int slot = frameCounter % 10; //define repeating frame numbers from 0 to 9
+    //Tasks are organized so they do not inerfere with other tasks
+    //longest tasks are 2 and 3 so these are kept apart
+    //Task 5 will be called every 5 frames but will only run every 25
+    //Task 5 will then check to see if it is frame 25, 50, 75 etc.
+   switch (slot) {  
      case 0: Task1();                Task3();     Task4();   Task5();  break;
      case 1: Task1();    Task2();                                      break;
      case 2: Task1();                Task3();                          break;
@@ -134,10 +129,10 @@ void Frame(){
      case 9: Task1();                                                  break;
   }
   
-  frameCounter = frameCounter + 1  ;
+  frameCounter = frameCounter + 1  ; //frame counter will increment until its maximum value
 }
 
-
+//Loop to run function
 void loop(void) // Single time slot function of the Cyclic Executive (repeating)
 {
 }
