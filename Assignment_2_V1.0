@@ -87,10 +87,18 @@ void Task3() {                    //takes 1000-2000us
 
 void Task4() {                     //Takes 228us
   monitor.jobStarted(4);
-  Task_4_R1 = analogRead(TASK_4_DP);  //Measure four seperate analogue readings
-  Task_4_R2 = analogRead(TASK_4_DP);  //Store each one in a seperate float
-  Task_4_R3 = analogRead(TASK_4_DP);
-  Task_4_R4 = analogRead(TASK_4_DP);
+  if(frameCounter % 20 == 0){
+    Task_4_R1 = analogRead(TASK_4_DP);  //Measure four seperate analogue readings
+  }
+  if(frameCounter % 20 == 5){
+    Task_4_R2 = analogRead(TASK_4_DP);  //Store each one in a seperate float
+  }
+  if(frameCounter % 20 == 10){
+    Task_4_R3 = analogRead(TASK_4_DP);
+  }
+  if(frameCounter % 20== 15){
+    Task_4_R4 = analogRead(TASK_4_DP);
+  }
   
   //Then caclulate average of the 4 values and convert to voltage value
   Task_4_Avg = (Task_4_R1 + Task_4_R1 + Task_4_R1 + Task_4_R1)/(4*4095/3.3);
@@ -113,8 +121,8 @@ void Task5() {                    //Takes 122us
     Task_2_Freq_Int = constrain(Task_2_Freq_Int,0,99);   //Limit integers to only
     Task_3_Freq_Int = constrain(Task_3_Freq_Int,0,99);   //between 0 and 99.99
     
-    Serial.printf("Task 2 Frequnecy = %d, ", Task_2_Freq_Int );   //Serial print
-    Serial.printf("Task 3 Frequency = %d, \n", Task_3_Freq_Int ); //integers
+    Serial.printf("%d,", Task_2_Freq_Int );   //Serial print
+    Serial.printf("%d\n", Task_3_Freq_Int ); //integers
     monitor.jobEnded(5);
   }   
 }
@@ -123,7 +131,7 @@ void Task5() {                    //Takes 122us
 void Frame(){   
    unsigned int slot = frameCounter % 10; //define repeating frame numbers from 0 to 9
     //Tasks are organized so they do not inerfere with other tasks
-    //longest tasks are 2 and 3 so these are kept apart
+    //longest tasks are 2 and 3 so these are kep t apart
     //Task 5 will be called every 5 frames but will only run every 25
     //Task 5 will then check to see if it is frame 25, 50, 75 etc.
    switch (slot) {  
