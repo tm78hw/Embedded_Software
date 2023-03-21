@@ -1,0 +1,268 @@
+#include <B31DGMonitor.h>
+#include <Arduino.h>
+
+//Define Pin Names
+#define TASK_1_LED 5
+#define TASK_2_DP 6
+#define TASK_3_DP 7
+#define TASK_4_DP 1
+#define TASK_4_LED 0
+
+//Define delay constants for task 1
+int T1H = 200;    //Time 1 High in us
+int T1L = 50;     //Time 1 Low in us
+int T2H = 30;     //Time 2 High in us
+
+//Initialize variables for tasks 2 and 3 and 4 
+int Task_2_TH = 0;
+int Task_3_TH = 0;
+int Task_2_Freq = 0;
+int Task_3_Freq = 0;
+int Task_2_Freq_Int = 0;
+int Task_3_Freq_Int = 0;
+int Task_4_R1 = 0;
+int Task_4_R2 = 0;
+int Task_4_R3 = 0;
+int Task_4_R4 = 0;
+float Task_4_Avg = 0;
+
+//Name mointor
+B31DGCyclicExecutiveMonitor monitor;
+
+// Declare a mutex Semaphore Handle which we will use to manage the Serial Port.
+// It will be used to ensure only only one Task is accessing this resource at any time.
+SemaphoreHandle_t xSerialSemaphore;
+
+// define 5 Tasks
+void Task1( void *pvParameters );
+void Task2( void *pvParameters );
+void Task3( void *pvParameters );
+void Task4( void *pvParameters );
+void Task5( void *pvParameters );
+
+void setup(void) {
+  pinMode(TASK_1_LED, OUTPUT);     //Pin modes
+  pinMode(TASK_2_DP, INPUT);
+  pinMode(TASK_3_DP, INPUT);
+  pinMode(TASK_4_DP, INPUT);
+  pinMode(TASK_4_LED, OUTPUT);
+  Serial.begin(9600);             //Begin serial monitor
+
+  // Semaphores are useful to stop a Task proceeding, where it should be paused to wait,
+  // because it is sharing a resource, such as the Serial port.
+  // Semaphores should only be used whilst the scheduler is running, but we can set it up here.
+  if ( xSerialSemaphore == NULL )  // Check to confirm that the Serial Semaphore has not already been created.
+  {
+    xSerialSemaphore = xSemaphoreCreateMutex();  // Create a mutex semaphore we will use to manage the Serial Port
+    
+  if ( ( xSerialSemaphore ) != NULL )
+    xSemaphoreGive( ( xSerialSemaphore ) );  // Make the Serial Port available for use, by "Giving" the Semaphore.
+  }
+
+
+  /* Now set up the five Tasks to run independently.
+  xTaskCreate(
+    Task1
+    ,  "Task1"  // A name just for humans
+    ,  100  // This stack size can be checked & adjusted by reading the Stack Highwater
+    ,  NULL
+    ,  1  // Priority, with 1 being the highest, and 4 being the lowest.
+    ,  NULL );
+  */
+
+  xTaskCreate(Task1,  "Task1",  10000  ,  NULL,  1  ,  NULL );
+  xTaskCreate(Task2,  "Task2",  10000  ,  NULL,  2  ,  NULL );
+  xTaskCreate(Task3,  "Task3",  10000  ,  NULL,  3  ,  NULL );
+  xTaskCreate(Task4,  "Task4",  10000  ,  NULL,  4  ,  NULL );
+  xTaskCreate(Task5,  "Task5",  10000  ,  NULL,  5  ,  NULL );
+
+  monitor.startMonitoring();      //Start monitoring scheme
+
+  // Now the Task scheduler, which takes over control of scheduling individual Tasks, is automatically started.
+}
+
+//Loop to run function
+void loop(void)
+{
+    //Empty as tasks are run seperately
+}
+
+//Define Tasks 1 - 5
+void Task1(void *pvParameters) {                     //takes 286us
+  monitor.jobStarted(1);
+  TickType_t xLastWakeTime;
+  const TickType_t xFrequency = pdMS_TO_TICKS( 4 ); // Task period (in milliseconds)
+  
+  // Initialize xLastWakeTime to the current tick count
+  xLastWakeTime = xTaskGetTickCount();
+  
+  for (;;) // A Task shall never return or exit.
+  {
+    // See if we can obtain or "Take" the Serial Semaphore.
+    // If the semaphore is not available, wait 5 ticks of the Scheduler to see if it becomes free.
+    if ( xSemaphoreTake( xSerialSemaphore, ( TickType_t ) 15 ) == pdTRUE )
+    {
+      // We were able to obtain or "Take" the semaphore and can now access the shared resource.
+      delayMicroseconds(30);
+      digitalWrite(TASK_1_LED, HIGH);   //TASK_1_DP is held high for duration T1H
+      delayMicroseconds(T1H);
+      digitalWrite(TASK_1_LED, LOW);    //Then Low for duration T1L
+      delayMicroseconds(T1L);
+      digitalWrite(TASK_1_LED, HIGH);   //Then high for duration T2H
+      delayMicroseconds(T2H);
+      digitalWrite(TASK_1_LED, LOW);
+
+      xSemaphoreGive( xSerialSemaphore ); // Now free or "Give" the Serial Port for others.
+    }
+
+    // Wait until the end of the task period
+    vTaskDelayUntil( &xLastWakeTime, xFrequency );
+  }
+  monitor.jobEnded(1);
+}
+
+void Task2(void *pvParameters) {                    //takes 1000-3000us
+  monitor.jobStarted(2);
+  TickType_t xLastWakeTime;
+  const TickType_t xFrequency = pdMS_TO_TICKS( 20 ); // Task period (in milliseconds)
+
+  // Initialize xLastWakeTime to the current tick count
+  xLastWakeTime = xTaskGetTickCount();
+  
+  for (;;)
+  {
+    // See if we can obtain or "Take" the Serial Semaphore.
+    // If the semaphore is not available, wait 5 ticks of the Scheduler to see if it becomes free.
+    if ( xSemaphoreTake( xSerialSemaphore, ( TickType_t ) 15 ) == pdTRUE )
+    {
+      Task_2_TH = pulseIn(TASK_2_DP, HIGH, 4000);   //Measure time of high pulse
+      
+        if(Task_2_TH > 0){
+          Task_2_Freq = 1000000/(Task_2_TH*2);    //Compute frequnecy
+        }
+        else{
+          Task_2_Freq = 333;  
+        }
+
+      xSemaphoreGive( xSerialSemaphore ); // Now free or "Give" the Serial Port for others.
+    }
+
+    // Wait until the end of the task period
+    vTaskDelayUntil( &xLastWakeTime, xFrequency );
+  }
+
+  
+  monitor.jobEnded(2);
+}
+
+void Task3(void *pvParameters) {                    //takes 1000-2000us
+  monitor.jobStarted(3);
+  TickType_t xLastWakeTime;
+  const TickType_t xFrequency = pdMS_TO_TICKS( 8 ); // Task period (in milliseconds)
+
+  // Initialize xLastWakeTime to the current tick count
+  xLastWakeTime = xTaskGetTickCount();
+  
+  for (;;)
+  {
+
+    // See if we can obtain or "Take" the Serial Semaphore.
+    // If the semaphore is not available, wait 5 ticks of the Scheduler to see if it becomes free.
+    if ( xSemaphoreTake( xSerialSemaphore, ( TickType_t ) 15 ) == pdTRUE )
+    {
+      Task_3_TH = pulseIn(TASK_3_DP, HIGH, 3000);   //Measure time of high pulse
+      if(Task_3_TH > 0){
+         Task_3_Freq = 1000000/(Task_3_TH*2);    //Compute frequnecy
+      }
+      else{
+        Task_3_Freq = 500;  
+      }
+      
+      xSemaphoreGive( xSerialSemaphore ); // Now free or "Give" the Serial Port for others.
+    }
+
+    // Wait until the end of the task period
+    vTaskDelayUntil( &xLastWakeTime, xFrequency );
+  }
+
+  monitor.jobEnded(3);
+}
+
+void Task4(void *pvParameters) {                     //Takes 228us
+  monitor.jobStarted(4);
+  
+    TickType_t xLastWakeTime;
+    const TickType_t xFrequency = pdMS_TO_TICKS( 20 ); // Task period (in milliseconds)
+
+    // Initialize xLastWakeTime to the current tick count
+    xLastWakeTime = xTaskGetTickCount();
+  
+  for (;;)
+  {
+
+    // See if we can obtain or "Take" the Serial Semaphore.
+    // If the semaphore is not available, wait 5 ticks of the Scheduler to see if it becomes free.
+    if ( xSemaphoreTake( xSerialSemaphore, ( TickType_t ) 15 ) == pdTRUE )
+    {
+        Task_4_R1 = analogRead(TASK_4_DP);  //Measure four seperate analogue readings
+
+        Task_4_R2 = analogRead(TASK_4_DP);  //Store each one in a seperate register
+
+        Task_4_R3 = analogRead(TASK_4_DP);
+
+        Task_4_R4 = analogRead(TASK_4_DP);
+
+      
+      //Then caclulate average of the 4 values and convert to voltage value
+      Task_4_Avg = (Task_4_R1 + Task_4_R1 + Task_4_R1 + Task_4_R1)/(4*4095/3.3);
+    
+      if (Task_4_Avg >= 1.65){      //light LED when the voltage is above 1.65V
+        digitalWrite(TASK_4_LED, HIGH);
+      }
+      else{                         //Turn off LED when voltage is below 1.65V
+        digitalWrite(TASK_4_LED, LOW);
+      }
+
+      xSemaphoreGive( xSerialSemaphore ); // Now free or "Give" the Serial Port for others.
+    }
+
+    // Wait until the end of the task period
+    vTaskDelayUntil( &xLastWakeTime, xFrequency );
+  }
+    
+  monitor.jobEnded(4);
+}
+
+void Task5(void *pvParameters) {                    //Takes 122us
+    monitor.jobStarted(5);
+    
+    TickType_t xLastWakeTime;
+    const TickType_t xFrequency = pdMS_TO_TICKS( 100 ); // Task period (in milliseconds)
+
+    // Initialize xLastWakeTime to the current tick count
+    xLastWakeTime = xTaskGetTickCount();
+  
+  for (;;)
+  {
+
+    // See if we can obtain or "Take" the Serial Semaphore.
+    // If the semaphore is not available, wait 5 ticks of the Scheduler to see if it becomes free.
+    if ( xSemaphoreTake( xSerialSemaphore, ( TickType_t ) 15 ) == pdTRUE )
+    {
+      
+    Task_2_Freq_Int = map(Task_2_Freq,333,1000, 0, 99);   //Limit integers to only
+    Task_3_Freq_Int = map(Task_3_Freq,500,1000, 0, 99);   //between 0 and 99.99
+    Task_2_Freq_Int = constrain(Task_2_Freq_Int,0,99);   //Limit integers to only
+    Task_3_Freq_Int = constrain(Task_3_Freq_Int,0,99);   //between 0 and 99.99
+    
+    Serial.printf("%d,", Task_2_Freq_Int );   //Serial print
+    Serial.printf("%d\n", Task_3_Freq_Int ); //integers
+
+      xSemaphoreGive( xSerialSemaphore ); // Now free or "Give" the Serial Port for others.
+    }
+
+    // Wait until the end of the task period
+    vTaskDelayUntil( &xLastWakeTime, xFrequency );
+  }
+  monitor.jobEnded(5);
+}
