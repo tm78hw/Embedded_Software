@@ -3,7 +3,7 @@
 #include <Arduino.h>
 
 //Define Pin Names
-#define TASK_1_DP 5
+#define TASK_1_LED 5
 #define TASK_2_DP 6
 #define TASK_3_DP 7
 #define TASK_4_DP 1
@@ -35,7 +35,7 @@ B31DGCyclicExecutiveMonitor monitor;
 Ticker FrameTick;
 
 void setup(void) {
-  pinMode(TASK_1_DP, OUTPUT);     //Pin modes
+  pinMode(TASK_1_LED, OUTPUT);     //Pin modes
   pinMode(TASK_2_DP, INPUT);
   pinMode(TASK_3_DP, INPUT);
   pinMode(TASK_4_DP, INPUT);
@@ -51,13 +51,13 @@ void setup(void) {
 void Task1() {                     //takes 286us
   monitor.jobStarted(1);
   delayMicroseconds(30);
-  digitalWrite(TASK_1_DP, HIGH);   //TASK_1_DP is held high for duration T1H
+  digitalWrite(TASK_1_LED, HIGH);   //TASK_1_DP is held high for duration T1H
   delayMicroseconds(T1H);
-  digitalWrite(TASK_1_DP, LOW);    //Then Low for duration T1L
+  digitalWrite(TASK_1_LED, LOW);    //Then Low for duration T1L
   delayMicroseconds(T1L);
-  digitalWrite(TASK_1_DP, HIGH);   //Then high for duration T2H
+  digitalWrite(TASK_1_LED, HIGH);   //Then high for duration T2H
   delayMicroseconds(T2H);
-  digitalWrite(TASK_1_DP, LOW);
+  digitalWrite(TASK_1_LED, LOW);
   monitor.jobEnded(1);
 }
 
