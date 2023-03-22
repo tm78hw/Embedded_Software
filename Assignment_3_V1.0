@@ -2,24 +2,29 @@
 #include <Arduino.h>
 
 //Define Pin Names
-#define TASK_1_LED 5
+#define TASK_1_DP 5
 #define TASK_2_DP 6
 #define TASK_3_DP 7
 #define TASK_4_DP 1
 #define TASK_4_LED 0
+#define TASK_6_BUTTON 2
+#define TASK_7_LED 3
 
 //Define delay constants for task 1
 int T1H = 200;    //Time 1 High in us
 int T1L = 50;     //Time 1 Low in us
 int T2H = 30;     //Time 2 High in us
-int task1Runs;
 
 //Initialize variables for tasks 2 and 3 and 4 
-int Task_2_TH, Task_2_Freq, Task_2_Freq_Int, task2Runs;
-int Task_3_TH, Task_3_Freq, Task_3_Freq_Int, task3Runs;
-int Task_4_R1, Task_4_R2, Task_4_R3, Task_4_R4, task4Runs;
+int Task_2_Freq_Int;
+int Task_3_Freq_Int;
+int Task_4_R1, Task_4_R2, Task_4_R3, Task_4_R4;
 float Task_4_Avg;
-int task5Runs;
+int toggleLED;
+int toggleButton;
+
+//Initiate variables to count number of runs for each task
+int task1Runs, task2Runs, task3Runs, task4Runs, task5Runs, task6Runs, task7Runs;
 
 const TickType_t tickRate = configTICK_RATE_HZ; // Get the tick rate
 TickType_t endTime;
@@ -29,6 +34,17 @@ TickType_t endTime;
 // It will be used to ensure only only one Task is accessing this resource at any time.
 SemaphoreHandle_t xSerialSemaphore;
 
+QueueHandle_t queueLED; // Declare the event queue handle
+
+// Define the struct
+typedef struct {
+    int task2;
+    int task3;
+} frequencyGlobalStructure;
+
+// Define a global variable of type frequencyGlobalStructure
+frequencyGlobalStructure freqStruct;
+
 // define 5 Tasks
 void Task1( void *pvParameters );
 void Task2( void *pvParameters );
@@ -37,11 +53,13 @@ void Task4( void *pvParameters );
 void Task5( void *pvParameters );
 
 void setup(void) {
-  pinMode(TASK_1_LED, OUTPUT);     //Pin modes
+  pinMode(TASK_1_DP, OUTPUT);     //Pin modes
   pinMode(TASK_2_DP, INPUT);
   pinMode(TASK_3_DP, INPUT);
   pinMode(TASK_4_DP, INPUT);
   pinMode(TASK_4_LED, OUTPUT);
+  pinMode(TASK_6_BUTTON, INPUT_PULLUP);
+  pinMode(TASK_7_LED, OUTPUT);
   Serial.begin(9600);             //Begin serial monitor
 
   // Semaphores are useful to stop a Task proceeding, where it should be paused to wait,
@@ -66,12 +84,14 @@ void setup(void) {
     ,  NULL );
   */
 
-  xTaskCreate(Task1,  "Task1",  10000  ,  NULL,  6  ,  NULL );
-  xTaskCreate(Task2,  "Task2",  10000  ,  NULL,  4  ,  NULL );
-  xTaskCreate(Task3,  "Task3",  10000  ,  NULL,  5  ,  NULL );
-  xTaskCreate(Task4,  "Task4",  10000  ,  NULL,  3  ,  NULL );
-  xTaskCreate(Task5,  "Task5",  10000  ,  NULL,  2  ,  NULL );
-  xTaskCreate(Task6,  "Task6",  10000  ,  NULL,  1  ,  NULL );
+  xTaskCreate(Task1,  "Task1",  10000  ,  NULL,  8  ,  NULL );
+  xTaskCreate(Task2,  "Task2",  10000  ,  NULL,  6  ,  NULL );
+  xTaskCreate(Task3,  "Task3",  10000  ,  NULL,  7  ,  NULL );
+  xTaskCreate(Task4,  "Task4",  10000  ,  NULL,  5  ,  NULL );
+  xTaskCreate(Task5,  "Task5",  10000  ,  NULL,  4  ,  NULL );
+  xTaskCreate(Task6,  "Task6",  10000  ,  NULL,  3  ,  NULL );
+  xTaskCreate(Task7,  "Task7",  10000  ,  NULL,  2  ,  NULL );
+  xTaskCreate(Task8,  "Task8",  10000  ,  NULL,  1  ,  NULL );
 
   // Now the Task scheduler, which takes over control of scheduling individual Tasks, is automatically started.
   
@@ -110,13 +130,13 @@ void Task1(void *pvParameters) {                     //takes 286us
     
       // We were able to obtain or "Take" the semaphore and can now access the shared resource.
       delayMicroseconds(30);
-      digitalWrite(TASK_1_LED, HIGH);   //TASK_1_DP is held high for duration T1H
+      digitalWrite(TASK_1_DP, HIGH);   //TASK_1_DP is held high for duration T1H
       delayMicroseconds(T1H);
-      digitalWrite(TASK_1_LED, LOW);    //Then Low for duration T1L
+      digitalWrite(TASK_1_DP, LOW);    //Then Low for duration T1L
       delayMicroseconds(T1L);
-      digitalWrite(TASK_1_LED, HIGH);   //Then high for duration T2H
+      digitalWrite(TASK_1_DP, HIGH);   //Then high for duration T2H
       delayMicroseconds(T2H);
-      digitalWrite(TASK_1_LED, LOW);
+      digitalWrite(TASK_1_DP, LOW);
 
       xSemaphoreGive( xSerialSemaphore ); // Now free or "Give" the Serial Port for others.
     }
@@ -146,14 +166,14 @@ void Task2(void *pvParameters) {                    //takes 1000-3000us
         task2Runs = task2Runs+1;   //Serial print
 
       
-      int Task_2_TH, Task_2_Freq, Task_2_Freq_Int;  //Initialize variables
+      int Task_2_TH;  //Initialize variables
       Task_2_TH = pulseIn(TASK_2_DP, HIGH, 4000);   //Measure time of high pulse
       
         if(Task_2_TH > 0){
-          Task_2_Freq = 1000000/(Task_2_TH*2);    //Compute frequnecy
+          freqStruct.task2 = 1000000/(Task_2_TH*2);    //Compute frequnecy
         }
         else{
-          Task_2_Freq = 333;  
+          freqStruct.task2 = 333;  
         }
 
       xSemaphoreGive( xSerialSemaphore ); // Now free or "Give" the Serial Port for others.
@@ -184,12 +204,13 @@ void Task3(void *pvParameters) {                    //takes 1000-2000us
       
       task3Runs = task3Runs+1;   //Serial print
       
+      int Task_3_TH;  //Initialize variables
       Task_3_TH = pulseIn(TASK_3_DP, HIGH, 3000);   //Measure time of high pulse
       if(Task_3_TH > 0){
-         Task_3_Freq = 1000000/(Task_3_TH*2);    //Compute frequnecy
+         freqStruct.task3 = 1000000/(Task_3_TH*2);    //Compute frequnecy
       }
       else{
-        Task_3_Freq = 500;  
+        freqStruct.task3 = 500;  
       }
       
       xSemaphoreGive( xSerialSemaphore ); // Now free or "Give" the Serial Port for others.
@@ -221,16 +242,23 @@ void Task4(void *pvParameters) {                     //Takes 228us
       TickType_t tickCount = xTaskGetTickCount(); // Get the tick count
       
       task4Runs = task4Runs+1;   //Serial print
-      
+
+      if(task4Runs%4 == 0){
       Task_4_R1 = analogRead(TASK_4_DP);  //Measure four seperate analogue readings
-
-      Task_4_R2 = analogRead(TASK_4_DP);  //Store each one in a seperate register
-
-      Task_4_R3 = analogRead(TASK_4_DP);
-
-      Task_4_R4 = analogRead(TASK_4_DP);
-
+      }
       
+      if(task4Runs%4 == 1){
+      Task_4_R2 = analogRead(TASK_4_DP);  //Store each one in a seperate register
+      }
+      
+      if(task4Runs%4 == 2){
+      Task_4_R3 = analogRead(TASK_4_DP);  //Measure four seperate analogue readings
+      }
+
+      if(task4Runs%4 == 3){
+      Task_4_R4 = analogRead(TASK_4_DP);  //Measure four seperate analogue readings
+      }
+
       //Then caclulate average of the 4 values and convert to voltage value
       Task_4_Avg = (Task_4_R1 + Task_4_R1 + Task_4_R1 + Task_4_R1)/(4*4095/3.3);
     
@@ -273,8 +301,9 @@ void Task5(void *pvParameters) {                    //Takes 122us
       task5Runs = task5Runs+1;   //Serial print
  
     //Perform Task 5
-    Task_2_Freq_Int = map(Task_2_Freq,333,1000, 0, 99);   //Limit integers to only
-    Task_3_Freq_Int = map(Task_3_Freq,500,1000, 0, 99);   //between 0 and 99.99
+    int Task_2_Freq_Int, Task_3_Freq_Int;
+    Task_2_Freq_Int = map(freqStruct.task2,333,1000, 0, 99);   //Limit integers to only
+    Task_3_Freq_Int = map(freqStruct.task3,500,1000, 0, 99);   //between 0 and 99.99
     Task_2_Freq_Int = constrain(Task_2_Freq_Int,0,99);   //Limit integers to only
     Task_3_Freq_Int = constrain(Task_3_Freq_Int,0,99);   //between 0 and 99.99
     
@@ -290,6 +319,88 @@ void Task5(void *pvParameters) {                    //Takes 122us
 }
 
 void Task6(void *pvParameters) {                    //Takes 122us
+  
+    
+    TickType_t xLastWakeTime;
+    const TickType_t xFrequency = pdMS_TO_TICKS( 100 ); // Task period (in milliseconds)
+
+    // Initialize xLastWakeTime to the current tick count
+    xLastWakeTime = xTaskGetTickCount();
+   
+  for (;;)
+  {
+
+    // See if we can obtain or "Take" the Serial Semaphore.
+    // If the semaphore is not available, wait 200 ticks of the Scheduler to see if it becomes free.
+    if ( xSemaphoreTake( xSerialSemaphore, ( TickType_t ) 200 ) == pdTRUE )
+    {
+
+      // Calculate total number 
+      int task6Counter;
+      TickType_t tickCount = xTaskGetTickCount(); // Get the tick count      
+
+      task6Runs = task6Runs+1;   //Serial print
+ 
+      //Perform Task 6
+      queueLED = xQueueCreate(10, sizeof(int));  // Create the event queue with a size of 10
+      if(digitalRead(TASK_6_BUTTON)==HIGH){   //Button 2 = 1 run signal B followed by 
+          toggleButton=1;
+          xQueueSend(queueLED, &toggleButton, 0);  // Send the event to the queue                                     
+      }
+      if(digitalRead(TASK_6_BUTTON)==LOW){   //Button 2 = 1 run signal B followed by 
+          toggleButton=0;
+          xQueueSend(queueLED, &toggleButton, 0);  // Send the event to the queue                                      
+      }
+
+      xSemaphoreGive( xSerialSemaphore ); // Now free or "Give" the Serial Port for others.
+    }
+
+    // Wait until the end of the task period
+    vTaskDelayUntil( &xLastWakeTime, xFrequency );
+  }
+}
+
+void Task7(void *pvParameters) {                    //Takes 122us
+  
+    
+    TickType_t xLastWakeTime;
+    const TickType_t xFrequency = pdMS_TO_TICKS( 100 ); // Task period (in milliseconds)
+
+    // Initialize xLastWakeTime to the current tick count
+    xLastWakeTime = xTaskGetTickCount();
+  
+  for (;;)
+  {
+
+    // See if we can obtain or "Take" the Serial Semaphore.
+    // If the semaphore is not available, wait 200 ticks of the Scheduler to see if it becomes free.
+    if ( xSemaphoreTake( xSerialSemaphore, ( TickType_t ) 200 ) == pdTRUE )
+    {
+
+      // Calculate total number 
+      int task7Counter;
+      TickType_t tickCount = xTaskGetTickCount(); // Get the tick count      
+
+      task7Runs = task7Runs+1;   //Serial print
+ 
+      //Perform Task 7
+      xQueueReceive(queueLED, &toggleLED, 1);  // Wait for an event to be received from the queue
+      if(toggleLED==1){   //Button 2 = 1 run signal B followed by 
+          digitalWrite(TASK_7_LED, HIGH);                                     
+      }
+      if(toggleLED==0){   //Button 2 = 1 run signal B followed by 
+          digitalWrite(TASK_7_LED, LOW);                                     
+      }
+
+      xSemaphoreGive( xSerialSemaphore ); // Now free or "Give" the Serial Port for others.
+    }
+
+    // Wait until the end of the task period
+    vTaskDelayUntil( &xLastWakeTime, xFrequency );
+  }
+}
+
+void Task8(void *pvParameters) {
   
     TickType_t xLastWakeTime;
     const TickType_t xFrequency = pdMS_TO_TICKS( 10000 ); // Task period (in milliseconds)
@@ -310,25 +421,32 @@ void Task6(void *pvParameters) {                    //Takes 122us
       int task3RunsNew, task3RunsOld;
       int task4RunsNew, task4RunsOld;
       int task5RunsNew, task5RunsOld;
+      int task6RunsNew, task6RunsOld;
+      int task7RunsNew, task7RunsOld;
       
       task1RunsNew = task1Runs - task1RunsOld;
       task2RunsNew = task2Runs - task2RunsOld;
       task3RunsNew = task3Runs - task3RunsOld;
       task4RunsNew = task4Runs - task4RunsOld;
       task5RunsNew = task5Runs - task5RunsOld;
+      task6RunsNew = task6Runs - task6RunsOld;
+      task7RunsNew = task7Runs - task7RunsOld;
       Serial.printf("PERFORMANCE SUMMARY:\n");   //Serial print     
       Serial.printf("Task 1 Iterations:%d\n",task1RunsNew);   //Serial print
       Serial.printf("Task 2 Iterations:%d\n",task2RunsNew);   //Serial print
       Serial.printf("Task 3 Iterations:%d\n",task3RunsNew);   //Serial print
       Serial.printf("Task 4 Iterations:%d\n",task4RunsNew);   //Serial print
       Serial.printf("Task 5 Iterations:%d\n",task5RunsNew);   //Serial print
+      Serial.printf("Task 6 Iterations:%d\n",task6RunsNew);   //Serial print
+      Serial.printf("Task 7 Iterations:%d\n",task7RunsNew);   //Serial print
       task1RunsOld = task1Runs;
       task2RunsOld = task2Runs;
       task3RunsOld = task3Runs;
       task4RunsOld = task4Runs;
       task5RunsOld = task5Runs;
+      task6RunsOld = task6Runs;
+      task7RunsOld = task7Runs;
 
-      
 
       xSemaphoreGive( xSerialSemaphore ); // Now free or "Give" the Serial Port for others.
     }
