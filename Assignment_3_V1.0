@@ -10,35 +10,19 @@
 #define TASK_6_BUTTON 2
 #define TASK_7_LED 3
 
-//Define delay constants for task 1
-int T1H = 200;    //Time 1 High in us
-int T1L = 50;     //Time 1 Low in us
-int T2H = 30;     //Time 2 High in us
-
-//Initialize variables for tasks 2 and 3 and 4 
-int Task_2_Freq_Int;
-int Task_3_Freq_Int;
-int Task_4_R1, Task_4_R2, Task_4_R3, Task_4_R4;
-float Task_4_Avg;
-int toggleLED;
-int toggleButton;
-
 //Initiate variables to count number of runs and Violations for each task
 int task1Runs, task2Runs, task3Runs, task4Runs, task5Runs, task6Runs, task7Runs;
-
-int task1Violations, task2Violations, task3Violations, task4Violations, task5Violations, task6Violations, task7Violations;
-
-const TickType_t tickRate = configTICK_RATE_HZ; // Get the tick rate
-TickType_t endTime;
-
+int task1Violations, task2Violations, task3Violations, task4Violations,
+    task5Violations, task6Violations, task7Violations;
 
 // Declare a mutex Semaphore Handle which we will use to manage the Serial Port.
 // It will be used to ensure only only one Task is accessing this resource at any time.
 SemaphoreHandle_t xSerialSemaphore;
 
-QueueHandle_t queueLED; // Declare the event queue handle
+// Declare the event queue handle
+QueueHandle_t queueLED;
 
-// Define the struct
+// Define the struct for tasks 2 and 3
 typedef struct {
     int task2;
     int task3;
@@ -79,32 +63,24 @@ void setup(void) {
   /* Now set up the five Tasks to run independently.
   xTaskCreate(
     Task1
-    ,  "Task1"  // A name just for humans
+    ,  "Task1"  // The name of the task
     ,  100  // This stack size can be checked & adjusted by reading the Stack Highwater
     ,  NULL
     ,  1  // Priority, with 1 being the highest, and 8 being the lowest.
     ,  NULL );
   */
-//  
-//Make sure to check stack size and change accordingly
-//
-//
-  xTaskCreate(Task1,  "Task1",  10000  ,  NULL,  8  ,  NULL );
-  xTaskCreate(Task2,  "Task2",  10000  ,  NULL,  6  ,  NULL );
-  xTaskCreate(Task3,  "Task3",  10000  ,  NULL,  7  ,  NULL );
-  xTaskCreate(Task4,  "Task4",  10000  ,  NULL,  5  ,  NULL );
-  xTaskCreate(Task5,  "Task5",  10000  ,  NULL,  4  ,  NULL );
-  xTaskCreate(Task6,  "Task6",  10000  ,  NULL,  3  ,  NULL );
-  xTaskCreate(Task7,  "Task7",  10000  ,  NULL,  2  ,  NULL );
-  xTaskCreate(Task8,  "Task8",  10000  ,  NULL,  1  ,  NULL );
+
+  xTaskCreate(Task1,  "Task1",  2500  ,  NULL,  1  ,  NULL );
+  xTaskCreate(Task2,  "Task2",  2500  ,  NULL,  3  ,  NULL );
+  xTaskCreate(Task3,  "Task3",  2500  ,  NULL,  2  ,  NULL );
+  xTaskCreate(Task4,  "Task4",  2500  ,  NULL,  4  ,  NULL );
+  xTaskCreate(Task5,  "Task5",  2500  ,  NULL,  5  ,  NULL );
+  xTaskCreate(Task6,  "Task6",  2500  ,  NULL,  6  ,  NULL );
+  xTaskCreate(Task7,  "Task7",  2500  ,  NULL,  7  ,  NULL );
+  xTaskCreate(Task8,  "Task8",  2500  ,  NULL,  8  ,  NULL );
 
   // Now the Task scheduler, which takes over control of scheduling individual Tasks, is automatically started.
   
-  TickType_t tickCount = xTaskGetTickCount(); // Get the tick count
-  uint32_t elapsedMillis = (uint32_t)(tickCount * 1000 / tickRate); // Calculate the elapsed time in milliseconds
-  endTime = pdMS_TO_TICKS( 10000 )+tickCount+1; // Task period (in milliseconds)
-
-
 }
 
 //Loop to run function
@@ -115,11 +91,11 @@ void loop(void)
 
 //Define Tasks 1 - 5
 void Task1(void *pvParameters) {                     //takes 286us
-  TickType_t xLastWakeTime;
+  TickType_t xCurrentExecutionTime;
   const TickType_t xFrequency = pdMS_TO_TICKS( 4 ); // Task period (in milliseconds)
   
   // Initialize xLastWakeTime to the current tick count
-  xLastWakeTime = xTaskGetTickCount();
+  xCurrentExecutionTime = xTaskGetTickCount();
   
   for (;;) // A Task shall never return or exit.
   {
@@ -131,25 +107,22 @@ void Task1(void *pvParameters) {                     //takes 286us
       task1Runs = task1Runs+1;   //Serial print
       
       //////// Calculate total number of violations ////////
-      TickType_t xCurrentExecutionTime = xTaskGetTickCount();    // Record the timestamp of the current execution of the task to test
       int currentFrame, lastFrame;
       if(currentFrame == NULL){
         currentFrame = xCurrentExecutionTime; //initialize first frame at the time the task was first run
       }
       currentFrame = currentFrame + xFrequency; //increment current frame by exactly 100ms
-      /*
-      Serial.print(xCurrentExecutionTime);
-      Serial.print('\n');
-      Serial.print(currentFrame);
-      Serial.print('\n');
-      */
+
       if (xCurrentExecutionTime > currentFrame || xCurrentExecutionTime < lastFrame) {    // Check if the task to test has run every 100ms
         task1Violations = task1Violations + 1;     // Task has not run every 100ms
-      } 
+        } 
 
       lastFrame = currentFrame; //Save current frame as the previous frame for the next run
     
       //////// Run Task 2 ////////
+      const int T1H = 200;    //Time 1 High in us
+      const int T1L = 50;     //Time 1 Low in us
+      const int T2H = 30;     //Time 2 High in us
       delayMicroseconds(30);
       digitalWrite(TASK_1_DP, HIGH);   //TASK_1_DP is held high for duration T1H
       delayMicroseconds(T1H);
@@ -160,19 +133,22 @@ void Task1(void *pvParameters) {                     //takes 286us
       digitalWrite(TASK_1_DP, LOW);
 
       xSemaphoreGive( xSerialSemaphore ); // Now free or "Give" the Serial Port for others.
+      
+      //uint32_t uxHighWaterMark = uxTaskGetStackHighWaterMark(NULL);
+      //printf("Task 1 stack high water mark: %u\n", uxHighWaterMark);
     }
 
     // Wait until the end of the task period
-    vTaskDelayUntil( &xLastWakeTime, xFrequency );
+    vTaskDelayUntil( &xCurrentExecutionTime, xFrequency );
   }
 }
 
 void Task2(void *pvParameters) {                    //takes 1000-3000us
-  TickType_t xLastWakeTime;
+  TickType_t xCurrentExecutionTime;
   const TickType_t xFrequency = pdMS_TO_TICKS( 20 ); // Task period (in milliseconds)
 
   // Initialize xLastWakeTime to the current tick count
-  xLastWakeTime = xTaskGetTickCount();
+  xCurrentExecutionTime = xTaskGetTickCount();
   
   for (;;)
   {
@@ -184,21 +160,15 @@ void Task2(void *pvParameters) {                    //takes 1000-3000us
       task2Runs = task2Runs+1;   //Serial print
 
       //////// Calculate total number of violations ////////
-      TickType_t xCurrentExecutionTime = xTaskGetTickCount();    // Record the timestamp of the current execution of the task to test
       int currentFrame, lastFrame;
       if(currentFrame == NULL){
         currentFrame = xCurrentExecutionTime; //initialize first frame at the time the task was first run
       }
       currentFrame = currentFrame + xFrequency; //increment current frame by exactly 100ms
-      /*
-      Serial.print(xCurrentExecutionTime);
-      Serial.print('\n');
-      Serial.print(currentFrame);
-      Serial.print('\n');
-      */
+      
       if (xCurrentExecutionTime > currentFrame || xCurrentExecutionTime < lastFrame) {    // Check if the task to test has run every 100ms
         task2Violations = task2Violations + 1;     // Task has not run every 100ms
-      } 
+        } 
 
       lastFrame = currentFrame; //Save current frame as the previous frame for the next run
       
@@ -214,19 +184,22 @@ void Task2(void *pvParameters) {                    //takes 1000-3000us
         }
 
       xSemaphoreGive( xSerialSemaphore ); // Now free or "Give" the Serial Port for others.
+
+      //uint32_t uxHighWaterMark = uxTaskGetStackHighWaterMark(NULL);
+      //printf("Task 2 stack high water mark: %u bytes\n", uxHighWaterMark);
     }
 
     // Wait until the end of the task period
-    vTaskDelayUntil( &xLastWakeTime, xFrequency );
+    vTaskDelayUntil( &xCurrentExecutionTime, xFrequency );
   }
 }
 
 void Task3(void *pvParameters) {                    //takes 1000-2000us
-  TickType_t xLastWakeTime;
+  TickType_t xCurrentExecutionTime;
   const TickType_t xFrequency = pdMS_TO_TICKS( 8 ); // Task period (in milliseconds)
 
   // Initialize xLastWakeTime to the current tick count
-  xLastWakeTime = xTaskGetTickCount();
+  xCurrentExecutionTime = xTaskGetTickCount();
   
   for (;;)
   {
@@ -240,18 +213,12 @@ void Task3(void *pvParameters) {                    //takes 1000-2000us
       task3Runs = task3Runs+1;   //Serial print
 
       //////// Calculate total number of violations ////////
-      TickType_t xCurrentExecutionTime = xTaskGetTickCount();    // Record the timestamp of the current execution of the task to test
       int currentFrame, lastFrame;
       if(currentFrame == NULL){
         currentFrame = xCurrentExecutionTime; //initialize first frame at the time the task was first run
       }
       currentFrame = currentFrame + xFrequency; //increment current frame by exactly 100ms
-      /*
-      Serial.print(xCurrentExecutionTime);
-      Serial.print('\n');
-      Serial.print(currentFrame);
-      Serial.print('\n');
-      */
+
       if (xCurrentExecutionTime > currentFrame || xCurrentExecutionTime < lastFrame) {    // Check if the task to test has run every 100ms
         task3Violations = task3Violations + 1;     // Task has not run every 100ms
       } 
@@ -269,21 +236,24 @@ void Task3(void *pvParameters) {                    //takes 1000-2000us
       }
       
       xSemaphoreGive( xSerialSemaphore ); // Now free or "Give" the Serial Port for others.
+      //uint32_t uxHighWaterMark = uxTaskGetStackHighWaterMark(NULL);
+      //printf("Task 3 stack high water mark: %u bytes\n", uxHighWaterMark);
+      
     }
 
     // Wait until the end of the task period
-    vTaskDelayUntil( &xLastWakeTime, xFrequency );
+    vTaskDelayUntil( &xCurrentExecutionTime, xFrequency );
   }
 
 }
 
 void Task4(void *pvParameters) {                     //Takes 228us
   
-    TickType_t xLastWakeTime;
+    TickType_t xCurrentExecutionTime;
     const TickType_t xFrequency = pdMS_TO_TICKS( 20 ); // Task period (in milliseconds)
 
     // Initialize xLastWakeTime to the current tick count
-    xLastWakeTime = xTaskGetTickCount();
+    xCurrentExecutionTime = xTaskGetTickCount();
   
   for (;;)
   {
@@ -298,18 +268,12 @@ void Task4(void *pvParameters) {                     //Takes 228us
 
       
       //////// Calculate total number of violations ////////
-      TickType_t xCurrentExecutionTime = xTaskGetTickCount();    // Record the timestamp of the current execution of the task to test
       int currentFrame, lastFrame;
       if(currentFrame == NULL){
         currentFrame = xCurrentExecutionTime; //initialize first frame at the time the task was first run
       }
       currentFrame = currentFrame + xFrequency; //increment current frame by exactly 100ms
-      /*
-      Serial.print(xCurrentExecutionTime);
-      Serial.print('\n');
-      Serial.print(currentFrame);
-      Serial.print('\n');
-      */
+
       if (xCurrentExecutionTime > currentFrame || xCurrentExecutionTime < lastFrame) {    // Check if the task to test has run every 100ms
         task4Violations = task4Violations + 1;     // Task has not run every 100ms
       } 
@@ -317,6 +281,9 @@ void Task4(void *pvParameters) {                     //Takes 228us
       lastFrame = currentFrame; //Save current frame as the previous frame for the next run
 
       //////// Run Task 4 ////////
+      int Task_4_R1, Task_4_R2, Task_4_R3, Task_4_R4;
+      float Task_4_Avg;
+      
       if(task4Runs%4 == 0){
       Task_4_R1 = analogRead(TASK_4_DP);  //Measure four seperate analogue readings
       }
@@ -344,20 +311,23 @@ void Task4(void *pvParameters) {                     //Takes 228us
       }
 
       xSemaphoreGive( xSerialSemaphore ); // Now free or "Give" the Serial Port for others.
+      //uint32_t uxHighWaterMark = uxTaskGetStackHighWaterMark(NULL);
+      //printf("Task 4 stack high water mark: %u bytes\n", uxHighWaterMark);
+     
     }
 
     // Wait until the end of the task period
-    vTaskDelayUntil( &xLastWakeTime, xFrequency );
+    vTaskDelayUntil( &xCurrentExecutionTime, xFrequency );
   }
 }
 
 void Task5(void *pvParameters) {                    //Takes 122us
   
-    TickType_t xLastWakeTime;
+    TickType_t xCurrentExecutionTime;
     const TickType_t xFrequency = pdMS_TO_TICKS( 100 ); // Task period (in milliseconds)
 
     // Initialize xLastWakeTime to the current tick count
-    xLastWakeTime = xTaskGetTickCount();
+    xCurrentExecutionTime = xTaskGetTickCount();
   
   for (;;)
   {
@@ -373,18 +343,12 @@ void Task5(void *pvParameters) {                    //Takes 122us
 
       
       //////// Calculate total number of violations ////////
-      TickType_t xCurrentExecutionTime = xTaskGetTickCount();    // Record the timestamp of the current execution of the task to test
       int currentFrame, lastFrame;
       if(currentFrame == NULL){
         currentFrame = xCurrentExecutionTime; //initialize first frame at the time the task was first run
       }
       currentFrame = currentFrame + xFrequency; //increment current frame by exactly 100ms
-      /*
-      Serial.print(xCurrentExecutionTime);
-      Serial.print('\n');
-      Serial.print(currentFrame);
-      Serial.print('\n');
-      */
+
       if (xCurrentExecutionTime > currentFrame || xCurrentExecutionTime < lastFrame) {    // Check if the task to test has run every 100ms
         task5Violations = task5Violations + 1;     // Task has not run every 100ms
       } 
@@ -401,22 +365,24 @@ void Task5(void *pvParameters) {                    //Takes 122us
       Serial.printf("%d,", Task_2_Freq_Int );   //Serial print
       Serial.printf("%d\n", Task_3_Freq_Int ); //integers
     
-        xSemaphoreGive( xSerialSemaphore ); // Now free or "Give" the Serial Port for others.
+      xSemaphoreGive( xSerialSemaphore ); // Now free or "Give" the Serial Port for others.
+      //uint32_t uxHighWaterMark = uxTaskGetStackHighWaterMark(NULL);
+      //printf("Task 5 stack high water mark: %u bytes\n", uxHighWaterMark);
+        
       }
 
     // Wait until the end of the task period
-    vTaskDelayUntil( &xLastWakeTime, xFrequency );
+    vTaskDelayUntil( &xCurrentExecutionTime, xFrequency );
   }
 }
 
 void Task6(void *pvParameters) {                    //Takes 122us
   
-    
-    TickType_t xLastWakeTime;
+    TickType_t xCurrentExecutionTime;
     const TickType_t xFrequency = pdMS_TO_TICKS( 100 ); // Task period (in milliseconds)
 
     // Initialize xLastWakeTime to the current tick count
-    xLastWakeTime = xTaskGetTickCount();
+    xCurrentExecutionTime = xTaskGetTickCount();
    
   for (;;)
   {
@@ -432,25 +398,20 @@ void Task6(void *pvParameters) {                    //Takes 122us
 
       
       //////// Calculate total number of violations ////////
-      TickType_t xCurrentExecutionTime = xTaskGetTickCount();    // Record the timestamp of the current execution of the task to test
       int currentFrame, lastFrame;
       if(currentFrame == NULL){
         currentFrame = xCurrentExecutionTime; //initialize first frame at the time the task was first run
       }
       currentFrame = currentFrame + xFrequency; //increment current frame by exactly 100ms
       
-      Serial.print(xCurrentExecutionTime);
-      Serial.print('\n');
-      Serial.print(currentFrame);
-      Serial.print('\n');
+      if (xCurrentExecutionTime > currentFrame || xCurrentExecutionTime < lastFrame) {    // Check if the task to test has run every 100ms
+        task6Violations = task6Violations + 1;     // Task has not run every 100ms
+      } 
       
-        if (xCurrentExecutionTime > currentFrame || xCurrentExecutionTime < lastFrame) {    // Check if the task to test has run every 100ms
-          task6Violations = task6Violations + 1;     // Task has not run every 100ms
-        } 
-
       lastFrame = currentFrame; //Save current frame as the previous frame for the next run
  
       //Perform Task 6
+      int toggleButton;
       queueLED = xQueueCreate(10, sizeof(int));  // Create the event queue with a size of 10
       if(digitalRead(TASK_6_BUTTON)==HIGH){   //Button 2 = 1 run signal B followed by 
           toggleButton=1;
@@ -462,21 +423,24 @@ void Task6(void *pvParameters) {                    //Takes 122us
       }
 
       xSemaphoreGive( xSerialSemaphore ); // Now free or "Give" the Serial Port for others.
+      //uint32_t uxHighWaterMark = uxTaskGetStackHighWaterMark(NULL);
+      //printf("Task 6 stack high water mark: %u bytes\n", uxHighWaterMark);
+      
     }
 
     // Wait until the end of the task period
-    vTaskDelayUntil( &xLastWakeTime, xFrequency );
+    vTaskDelayUntil( &xCurrentExecutionTime, xFrequency );
   }
 }
 
 void Task7(void *pvParameters) {                    //Takes 122us
   
     
-    TickType_t xLastWakeTime;
+    TickType_t xCurrentExecutionTime;
     const TickType_t xFrequency = pdMS_TO_TICKS( 100 ); // Task period (in milliseconds)
 
     // Initialize xLastWakeTime to the current tick count
-    xLastWakeTime = xTaskGetTickCount();
+    xCurrentExecutionTime = xTaskGetTickCount();
   
   for (;;)
   {
@@ -491,29 +455,26 @@ void Task7(void *pvParameters) {                    //Takes 122us
       task7Runs = task7Runs+1;   //Serial print
 
       //////// Calculate total number of violations ////////
-      TickType_t xCurrentExecutionTime = xTaskGetTickCount();    // Record the timestamp of the current execution of the task to test
       int currentFrame, lastFrame;
       if(currentFrame == NULL){
-        currentFrame = xCurrentExecutionTime-1; //initialize first frame at the time the task was first run
+        currentFrame = xCurrentExecutionTime; //initialize first frame at the time the task was first run
       }
       currentFrame = currentFrame + xFrequency; //increment current frame by exactly 100ms
       /*
-      Serial.print(xCurrentExecutionTime);
+      Serial.print(xFrequency);
       Serial.print('\n');
       Serial.print(currentFrame);
       Serial.print('\n');
       */
-        if (xCurrentExecutionTime <= currentFrame || xCurrentExecutionTime >= lastFrame) {    // Check if the task to test has run every 100ms
-          //No Violations
-        } 
-        else{
-          task7Violations = task7Violations + 1;     // Task has not run every 100ms
-        }
+      if (xCurrentExecutionTime > currentFrame || xCurrentExecutionTime < lastFrame) {    // Check if the task to test has run every 100ms
+        task7Violations = task7Violations + 1;     // Task has not run every 100ms
+      } 
 
       lastFrame = currentFrame; //Save current frame as the previous frame for the next run
         
  
       //////// Perform Task 7 ////////
+      int toggleLED;
       xQueueReceive(queueLED, &toggleLED, 1);  // Wait for an event to be received from the queue
       if(toggleLED==1){   //Button 2 = 1 run signal B followed by 
           digitalWrite(TASK_7_LED, HIGH);                                     
@@ -523,20 +484,23 @@ void Task7(void *pvParameters) {                    //Takes 122us
       }
 
       xSemaphoreGive( xSerialSemaphore ); // Now free or "Give" the Serial Port for others.
+      //uint32_t uxHighWaterMark = uxTaskGetStackHighWaterMark(NULL);
+      //printf("Task 7 stack high water mark: %u bytes\n", uxHighWaterMark);
+      
     }
 
     // Wait until the end of the task period
-    vTaskDelayUntil( &xLastWakeTime, xFrequency );
+    vTaskDelayUntil( &xCurrentExecutionTime, xFrequency );
   }
 }
 
 void Task8(void *pvParameters) {
   
-    TickType_t xLastWakeTime;
+    TickType_t xCurrentExecutionTime;
     const TickType_t xFrequency = pdMS_TO_TICKS( 10000 ); // Task period (in milliseconds)
 
     // Initialize xLastWakeTime to the current tick count
-    xLastWakeTime = xTaskGetTickCount();
+    xCurrentExecutionTime = xTaskGetTickCount();
   
   for (;;)
   {
@@ -561,6 +525,7 @@ void Task8(void *pvParameters) {
       task5RunsNew = task5Runs - task5RunsOld;
       task6RunsNew = task6Runs - task6RunsOld;
       task7RunsNew = task7Runs - task7RunsOld;
+      
       Serial.printf("PERFORMANCE SUMMARY:\n");   //Serial print     
       Serial.printf("Task 1 Iterations:%d/%d\n",task1Violations, task1RunsNew);   //Serial print
       Serial.printf("Task 2 Iterations:%d/%d\n",task2Violations, task2RunsNew);   //Serial print
@@ -585,11 +550,13 @@ void Task8(void *pvParameters) {
       task6Violations = 0;
       task7Violations = 0;
 
-
       xSemaphoreGive( xSerialSemaphore ); // Now free or "Give" the Serial Port for others.
+      uint32_t uxHighWaterMark = uxTaskGetStackHighWaterMark(NULL);
+      printf("Task 8 stack high water mark: %u bytes\n", uxHighWaterMark);
+      
     }
 
     // Wait until the end of the task period
-    vTaskDelayUntil( &xLastWakeTime, xFrequency );
+    vTaskDelayUntil( &xCurrentExecutionTime, xFrequency );
   }
 }
