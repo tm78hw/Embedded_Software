@@ -386,7 +386,10 @@ void Task6(void *pvParameters) {
       queueLED = xQueueCreate(10, sizeof(int));  // Create the event queue with a size of 10
       if(digitalRead(TASK_6_BUTTON)==HIGH){  //When Button is pressed
           toggleButton=1;                    //set toggleButton to 1
-          xQueueSend(queueLED, &toggleButton, 0);  // Send the event to the queue                                     
+          xQueueSend(queueLED, &toggleButton, 0);  // Send the event to the queue
+          Serial.print("time pushbutton was pressed: ");
+          Serial.print(currentExecutionTime);
+          Serial.print("\n");                                     
       }
       if(digitalRead(TASK_6_BUTTON)==LOW){  //When Button is not pressed 
           toggleButton=0;                   //set toggleButton to 0
@@ -394,11 +397,10 @@ void Task6(void *pvParameters) {
       }
 
       xSemaphoreGive( semaphore ); // Now free the semaphore
+      
       //uint32_t uxHighWaterMark = uxTaskGetStackHighWaterMark(NULL);
       //printf("Task 6 stack high water mark: %u bytes\n", uxHighWaterMark);
-      
     }
-
     // Wait until the end of the task period
     vTaskDelayUntil( &currentExecutionTime, taskPeriod );
   }
@@ -446,7 +448,10 @@ void Task7(void *pvParameters) {
       int toggleLED;
       xQueueReceive(queueLED, &toggleLED, 1);  // Wait for an event to be received from the queue
       if(toggleLED==1){   //When a 1 is received turn on LED
-          digitalWrite(TASK_7_LED, HIGH);                                     
+          digitalWrite(TASK_7_LED, HIGH);
+          Serial.print("time LED turns on: ");
+          Serial.print(currentExecutionTime);
+          Serial.print("\n");                                     
       }
       if(toggleLED==0){   //When a 0 is received turn off LED
           digitalWrite(TASK_7_LED, LOW);                                     
