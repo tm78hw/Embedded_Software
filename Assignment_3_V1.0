@@ -94,7 +94,7 @@ void Task1(void *pvParameters) {
       if(currentFrame == NULL){
         currentFrame = currentExecutionTime; //initialize first frame at the time 
       }                                      //the task was first run
-      currentFrame = currentFrame + taskPeriod; //increment current frame by exactly 100ms
+      currentFrame = currentFrame + taskPeriod; //increment current frame by exactly 4ms
 
       // Check if the task has run every 100ms
       if (currentExecutionTime > currentFrame || currentExecutionTime < lastFrame) {
@@ -147,7 +147,7 @@ void Task2(void *pvParameters) {
       if(currentFrame == NULL){
         currentFrame = currentExecutionTime; //initialize first frame at the time
       }                                      //the task was first run
-      currentFrame = currentFrame + taskPeriod; //increment current frame by exactly 100ms
+      currentFrame = currentFrame + taskPeriod; //increment current frame by exactly 20ms
 
       // Check if the task to test has run every 100ms
       if (currentExecutionTime > currentFrame || currentExecutionTime < lastFrame) {
@@ -159,13 +159,7 @@ void Task2(void *pvParameters) {
       ////////////////////////////// Run Task 2 //////////////////////////////
       int task2TimeHigh;  //Initialize variables
       task2TimeHigh = pulseIn(TASK_2_DP, HIGH, 4000);   //Measure time of high pulse
-      
-      if(task2TimeHigh > 0){
-        freqStruct.task2 = 1000000/(task2TimeHigh*2);    //Compute frequnecy
-      }
-      else{
-        freqStruct.task2 = 333;  
-      }
+      freqStruct.task2 = 1000000/(task2TimeHigh*2);    //Compute frequnecy
 
       xSemaphoreGive( semaphore ); // Now free the semaphore
 
@@ -198,7 +192,7 @@ void Task3(void *pvParameters) {
       if(currentFrame == NULL){
         currentFrame = currentExecutionTime; //initialize first frame at the time
       }                                      //the task was first run
-      currentFrame = currentFrame + taskPeriod; //increment current frame by exactly 100ms
+      currentFrame = currentFrame + taskPeriod; //increment current frame by exactly 8ms
 
       // Check if the task to test has run every 100ms
       if (currentExecutionTime > currentFrame || currentExecutionTime < lastFrame) {
@@ -210,13 +204,7 @@ void Task3(void *pvParameters) {
       /////////////////////////////// Run Task 3 ///////////////////////////////
       int task3TimeHigh;  //Initialize variables
       task3TimeHigh = pulseIn(TASK_3_DP, HIGH, 3000);   //Measure time of high pulse
-      
-      if(task3TimeHigh > 0){
-        freqStruct.task3 = 1000000/(task3TimeHigh*2);    //Compute frequnecy
-      }
-      else{
-        freqStruct.task3 = 500;  
-      }
+      freqStruct.task3 = 1000000/(task3TimeHigh*2);    //Compute frequnecy
       
       xSemaphoreGive( semaphore ); // Now free the semaphore
       //uint32_t uxHighWaterMark = uxTaskGetStackHighWaterMark(NULL);
@@ -251,7 +239,7 @@ void Task4(void *pvParameters) {
       if(currentFrame == NULL){
         currentFrame = currentExecutionTime; //initialize first frame at the time
       }                                      //the task was first run
-      currentFrame = currentFrame + taskPeriod; //increment current frame by exactly 100ms
+      currentFrame = currentFrame + taskPeriod; //increment current frame by exactly 20ms
 
       // Check if the task to test has run every 100ms
       if (currentExecutionTime > currentFrame || currentExecutionTime < lastFrame) {
@@ -383,19 +371,22 @@ void Task6(void *pvParameters) {
  
       //////////////////////////// Perform Task 6 ////////////////////////////
       int toggleButton;
+      int toggleButtonState;
       queueLED = xQueueCreate(10, sizeof(int));  // Create the event queue with a size of 10
-      if(digitalRead(TASK_6_BUTTON)==HIGH){  //When Button is pressed
+      if(digitalRead(TASK_6_BUTTON)==HIGH && toggleButtonState == 0){  //When Button is pressed
           toggleButton=1;                    //set toggleButton to 1
-          xQueueSend(queueLED, &toggleButton, 0);  // Send the event to the queue
-          Serial.print("time pushbutton was pressed: ");
-          Serial.print(currentExecutionTime);
-          Serial.print("\n");                                     
+          xQueueSend(queueLED, &toggleButton, 0);  // Send the event to the queue  
+          toggleButtonState = 1;
+      }
+      if(digitalRead(TASK_6_BUTTON)==HIGH && toggleButtonState == 1){  //When Button is pressed
+          toggleButton=0;                    //set toggleButton to 1
+          xQueueSend(queueLED, &toggleButton, 0);  // Send the event to the queue  
       }
       if(digitalRead(TASK_6_BUTTON)==LOW){  //When Button is not pressed 
           toggleButton=0;                   //set toggleButton to 0
-          xQueueSend(queueLED, &toggleButton, 0);  // Send the event to the queue                                      
+          xQueueSend(queueLED, &toggleButton, 0);  // Send the event to the queue
+          toggleButtonState = 0;                                     
       }
-
       xSemaphoreGive( semaphore ); // Now free the semaphore
       
       //uint32_t uxHighWaterMark = uxTaskGetStackHighWaterMark(NULL);
@@ -445,18 +436,21 @@ void Task7(void *pvParameters) {
         
  
       //////////////////////////// Perform Task 7 ////////////////////////////
-      int toggleLED;
-      xQueueReceive(queueLED, &toggleLED, 1);  // Wait for an event to be received from the queue
-      if(toggleLED==1){   //When a 1 is received turn on LED
+      int toggleLEDOld;
+      int toggleLEDNew;
+      int toggleLEDDifference;
+      
+      xQueueReceive(queueLED, &toggleLEDNew, 1);  // Wait for an event to be received from the queue
+      toggleLEDDifference = toggleLEDNew - toggleLEDOld;
+      if(toggleLEDDifference == 1){   //When a 1 is received turn on LED
           digitalWrite(TASK_7_LED, HIGH);
-          Serial.print("time LED turns on: ");
-          Serial.print(currentExecutionTime);
-          Serial.print("\n");                                     
+          toggleLEDOld = 1;                                   
       }
-      if(toggleLED==0){   //When a 0 is received turn off LED
-          digitalWrite(TASK_7_LED, LOW);                                     
+      if(toggleLEDDifference == 0){   //When a 0 is received turn off LED
+          digitalWrite(TASK_7_LED, LOW);
+          toggleLEDOld = 0;                           
       }
-
+      
       xSemaphoreGive( semaphore ); // Now free the semaphore
       
       //uint32_t uxHighWaterMark = uxTaskGetStackHighWaterMark(NULL);
