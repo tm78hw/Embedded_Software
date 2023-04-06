@@ -118,7 +118,7 @@ void Task1(void *pvParameters) {
       xSemaphoreGive( semaphore ); // Now free the semaphore
       
       //uint32_t uxHighWaterMark = uxTaskGetStackHighWaterMark(NULL);
-      //printf("Task 1 stack high water mark: %u\n", uxHighWaterMark);
+      printf("%u \n", currentExecutionTime);
     }
 
     // Wait until the end of the task period
@@ -375,10 +375,10 @@ void Task6(void *pvParameters) {
       if(digitalRead(TASK_6_BUTTON)==HIGH && toggleButtonState == 0){  //When Button is pressed
           toggleButton=1;                    //set toggleButton to 1
           xQueueSend(queueLED, &toggleButton, 0);  // Send the event to the queue  
-          toggleButtonState = 1;
+          toggleButtonState = 1;  //Set button state to 1 ensuring only one 1 is sent per button press
       }
-      if(digitalRead(TASK_6_BUTTON)==HIGH && toggleButtonState == 1){  //When Button is pressed
-          toggleButton=0;                    //set toggleButton to 1
+      if(digitalRead(TASK_6_BUTTON)==HIGH && toggleButtonState == 1){  //If button is still pressed
+          toggleButton=0;                    //set toggleButton to 0
           xQueueSend(queueLED, &toggleButton, 0);  // Send the event to the queue  
       }
       if(digitalRead(TASK_6_BUTTON)==LOW){  //When Button is not pressed 
@@ -440,12 +440,12 @@ void Task7(void *pvParameters) {
       int toggleLEDDifference;
       
       xQueueReceive(queueLED, &toggleLEDNew, 1);  // Wait for an event to be received from the queue
-      toggleLEDDifference = toggleLEDNew - toggleLEDOld;
+      toggleLEDDifference = toggleLEDNew - toggleLEDOld; //Calculate difference between new and old value
       if(toggleLEDDifference == 1){   //When a 1 is received turn on LED
           digitalWrite(TASK_7_LED, HIGH);
           toggleLEDOld = 1;                                   
       }
-      if(toggleLEDDifference == 0){   //When a 0 is received turn off LED
+      if(toggleLEDDifference == 0){   //When a 1 is received again turn off LED
           digitalWrite(TASK_7_LED, LOW);
           toggleLEDOld = 0;                           
       }
